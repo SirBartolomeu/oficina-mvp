@@ -1,0 +1,33 @@
+# Build artifacts
+**/bin/
+**/obj/
+
+# IDE/editor
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Test artifacts
+TestResults/
+**/TestResults/
+*.trx
+coverage.cobertura.xml
+
+# Python artifacts
+**/__pycache__/
+*.pyc
+
+# Security report probes/temp artifacts
+security-report/raw/semgrep.manual.json
+security-report/raw/semgrep.probe.json
+security-report/temp/
+
+# Local databases and runtime files
+*.db
+*.db-shm
+*.db-wal
+
+# OS junk
+.DS_Store
+Thumbs.db

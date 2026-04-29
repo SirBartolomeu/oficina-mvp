@@ -1,0 +1,23 @@
+services:
+  oficina-api:
+    build:
+      context: .
+      dockerfile: src/OficinaMvp.Api/Dockerfile
+    container_name: oficina-mvp-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Data Source=/data/oficina.db
+      Jwt__Issuer: OficinaMvp
+      Jwt__Audience: OficinaMvpClients
+      Jwt__Key: OficinaMvp-ChaveJWT-SuperSecreta-Com-32-Caracteres
+      Jwt__ExpirationMinutes: 120
+      AdminCredentials__Username: admin
+      AdminCredentials__Password: Admin@123
+    ports:
+      - "8080:8080"
+    volumes:
+      - oficina_data:/data
+    restart: unless-stopped
+
+volumes:
+  oficina_data:

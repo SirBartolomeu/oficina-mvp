@@ -1,0 +1,72 @@
+﻿{
+  "version": 1,
+  "parameters": "--vulnerable --include-transitive",
+  "sources": [
+    "https://api.nuget.org/v3/index.json"
+  ],
+  "projects": [
+    {
+      "path": "C:/Users/AAMJOF/Desktop/FIAP/Tech-Challenge-1/oficina-mvp/src/OficinaMvp.Api/OficinaMvp.Api.csproj"
+    },
+    {
+      "path": "C:/Users/AAMJOF/Desktop/FIAP/Tech-Challenge-1/oficina-mvp/tests/OficinaMvp.Domain.Tests/OficinaMvp.Domain.Tests.csproj",
+      "frameworks": [
+        {
+          "framework": "net8.0",
+          "transitivePackages": [
+            {
+              "id": "System.Net.Http",
+              "resolvedVersion": "4.3.0",
+              "vulnerabilities": [
+                {
+                  "severity": "High",
+                  "advisoryurl": "https://github.com/advisories/GHSA-7jgj-8wvc-jh57"
+                }
+              ]
+            },
+            {
+              "id": "System.Text.RegularExpressions",
+              "resolvedVersion": "4.3.0",
+              "vulnerabilities": [
+                {
+                  "severity": "High",
+                  "advisoryurl": "https://github.com/advisories/GHSA-cmhx-cq75-c4mj"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "C:/Users/AAMJOF/Desktop/FIAP/Tech-Challenge-1/oficina-mvp/tests/OficinaMvp.Integration.Tests/OficinaMvp.Integration.Tests.csproj",
+      "frameworks": [
+        {
+          "framework": "net8.0",
+          "transitivePackages": [
+            {
+              "id": "System.Net.Http",
+              "resolvedVersion": "4.3.0",
+              "vulnerabilities": [
+                {
+                  "severity": "High",
+                  "advisoryurl": "https://github.com/advisories/GHSA-7jgj-8wvc-jh57"
+                }
+              ]
+            },
+            {
+              "id": "System.Text.RegularExpressions",
+              "resolvedVersion": "4.3.0",
+              "vulnerabilities": [
+                {
+                  "severity": "High",
+                  "advisoryurl": "https://github.com/advisories/GHSA-cmhx-cq75-c4mj"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

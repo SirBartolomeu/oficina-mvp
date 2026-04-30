@@ -1,0 +1,12 @@
+﻿{
+    "generatedAtUtc":  "2026-04-24T13:58:14.0520118Z",
+    "machineName":  "M24281",
+    "userName":  "aamjof",
+    "gitCommit":  "N/A",
+    "gitBranch":  "N/A",
+    "dotnetVersion":  "9.0.301",
+    "pythonVersion":  "Python 3.11.9",
+    "dockerVersion":  "Docker version 29.4.0, build 9d7ad9f",
+    "semgrepVersion":  "1.161.0",
+    "scoutVersion":  "v1.20.4 (go1.25.5 - windows/amd64)"
+}

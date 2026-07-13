@@ -1,10 +1,9 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using OficinaMvp.Api.Application.Contracts;
-using OficinaMvp.Api.Application.Services;
-using OficinaMvp.Api.Domain.Validation;
-using OficinaMvp.Api.Infrastructure.Persistence;
+using OficinaMvp.Application.Contracts;
+using OficinaMvp.Application.Ports;
+using OficinaMvp.Application.Services;
+using OficinaMvp.Domain.Validation;
 
 namespace OficinaMvp.Api.Controllers;
 
@@ -14,12 +13,12 @@ namespace OficinaMvp.Api.Controllers;
 public sealed class ClientTrackingController : ControllerBase
 {
     private readonly WorkOrderApplicationService _workOrderService;
-    private readonly WorkshopDbContext _dbContext;
+    private readonly IWorkshopRepository _repository;
 
-    public ClientTrackingController(WorkOrderApplicationService workOrderService, WorkshopDbContext dbContext)
+    public ClientTrackingController(WorkOrderApplicationService workOrderService, IWorkshopRepository repository)
     {
         _workOrderService = workOrderService;
-        _dbContext = dbContext;
+        _repository = repository;
     }
 
     [HttpGet("{id:guid}")]
@@ -32,9 +31,7 @@ public sealed class ClientTrackingController : ControllerBase
         }
 
         var normalizedDocument = DocumentValidator.Normalize(document);
-        var customer = await _dbContext.Customers
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.Id == workOrder.CustomerId, cancellationToken);
+        var customer = await _repository.GetCustomerByIdAsync(workOrder.CustomerId, trackChanges: false, cancellationToken);
 
         if (customer is null || customer.Document != normalizedDocument)
         {

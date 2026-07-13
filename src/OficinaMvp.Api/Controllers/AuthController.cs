@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using OficinaMvp.Api.Application.Contracts;
-using OficinaMvp.Api.Infrastructure.Security;
+using OficinaMvp.Application.Contracts;
+using OficinaMvp.Infrastructure.Security;
 
 namespace OficinaMvp.Api.Controllers;
 
@@ -42,3 +42,4 @@ public sealed class AuthController : ControllerBase
         return Ok(new TokenResponse(token, "Bearer", _jwtOptions.ExpirationMinutes * 60));
     }
 }
+

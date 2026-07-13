@@ -1,5 +1,5 @@
-using OficinaMvp.Api.Domain.Entities;
-using OficinaMvp.Api.Domain.Exceptions;
+﻿using OficinaMvp.Domain.Entities;
+using OficinaMvp.Domain.Exceptions;
 
 namespace OficinaMvp.Domain.Tests.WorkOrders;
 
@@ -80,3 +80,4 @@ public sealed class WorkOrderLineAndHistoryTests
         Assert.Equal("erro de dominio", exception.Message);
     }
 }
+

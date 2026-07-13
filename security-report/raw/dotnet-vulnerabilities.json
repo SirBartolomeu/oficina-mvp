@@ -1,4 +1,4 @@
-﻿{
+{
   "version": 1,
   "parameters": "--vulnerable --include-transitive",
   "sources": [
@@ -6,67 +6,22 @@
   ],
   "projects": [
     {
-      "path": "C:/Users/AAMJOF/Desktop/FIAP/Tech-Challenge-1/oficina-mvp/src/OficinaMvp.Api/OficinaMvp.Api.csproj"
+      "path": "src/OficinaMvp.Api/OficinaMvp.Api.csproj"
     },
     {
-      "path": "C:/Users/AAMJOF/Desktop/FIAP/Tech-Challenge-1/oficina-mvp/tests/OficinaMvp.Domain.Tests/OficinaMvp.Domain.Tests.csproj",
-      "frameworks": [
-        {
-          "framework": "net8.0",
-          "transitivePackages": [
-            {
-              "id": "System.Net.Http",
-              "resolvedVersion": "4.3.0",
-              "vulnerabilities": [
-                {
-                  "severity": "High",
-                  "advisoryurl": "https://github.com/advisories/GHSA-7jgj-8wvc-jh57"
-                }
-              ]
-            },
-            {
-              "id": "System.Text.RegularExpressions",
-              "resolvedVersion": "4.3.0",
-              "vulnerabilities": [
-                {
-                  "severity": "High",
-                  "advisoryurl": "https://github.com/advisories/GHSA-cmhx-cq75-c4mj"
-                }
-              ]
-            }
-          ]
-        }
-      ]
+      "path": "tests/OficinaMvp.Domain.Tests/OficinaMvp.Domain.Tests.csproj"
     },
     {
-      "path": "C:/Users/AAMJOF/Desktop/FIAP/Tech-Challenge-1/oficina-mvp/tests/OficinaMvp.Integration.Tests/OficinaMvp.Integration.Tests.csproj",
-      "frameworks": [
-        {
-          "framework": "net8.0",
-          "transitivePackages": [
-            {
-              "id": "System.Net.Http",
-              "resolvedVersion": "4.3.0",
-              "vulnerabilities": [
-                {
-                  "severity": "High",
-                  "advisoryurl": "https://github.com/advisories/GHSA-7jgj-8wvc-jh57"
-                }
-              ]
-            },
-            {
-              "id": "System.Text.RegularExpressions",
-              "resolvedVersion": "4.3.0",
-              "vulnerabilities": [
-                {
-                  "severity": "High",
-                  "advisoryurl": "https://github.com/advisories/GHSA-cmhx-cq75-c4mj"
-                }
-              ]
-            }
-          ]
-        }
-      ]
+      "path": "tests/OficinaMvp.Integration.Tests/OficinaMvp.Integration.Tests.csproj"
+    },
+    {
+      "path": "src/OficinaMvp.Domain/OficinaMvp.Domain.csproj"
+    },
+    {
+      "path": "src/OficinaMvp.Application/OficinaMvp.Application.csproj"
+    },
+    {
+      "path": "src/OficinaMvp.Infrastructure/OficinaMvp.Infrastructure.csproj"
     }
   ]
 }

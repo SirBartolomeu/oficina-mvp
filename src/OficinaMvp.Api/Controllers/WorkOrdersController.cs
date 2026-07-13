@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using OficinaMvp.Api.Application.Contracts;
-using OficinaMvp.Api.Application.Services;
-using OficinaMvp.Api.Infrastructure.Persistence;
+using OficinaMvp.Application.Contracts;
+using OficinaMvp.Application.Services;
 
 namespace OficinaMvp.Api.Controllers;
 
@@ -13,12 +11,10 @@ namespace OficinaMvp.Api.Controllers;
 public sealed class WorkOrdersController : ControllerBase
 {
     private readonly WorkOrderApplicationService _workOrderService;
-    private readonly WorkshopDbContext _dbContext;
 
-    public WorkOrdersController(WorkOrderApplicationService workOrderService, WorkshopDbContext dbContext)
+    public WorkOrdersController(WorkOrderApplicationService workOrderService)
     {
         _workOrderService = workOrderService;
-        _dbContext = dbContext;
     }
 
     [HttpPost]
@@ -39,12 +35,14 @@ public sealed class WorkOrdersController : ControllerBase
     public async Task<ActionResult<WorkOrderDetailResponse>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var workOrder = await _workOrderService.GetByIdAsync(id, cancellationToken);
-        if (workOrder is null)
-        {
-            return NotFound();
-        }
+        return workOrder is null ? NotFound() : Ok(workOrder.ToDetailResponse());
+    }
 
-        return Ok(workOrder.ToDetailResponse());
+    [HttpGet("{id:guid}/status")]
+    public async Task<ActionResult<WorkOrderStatusResponse>> GetStatus(Guid id, CancellationToken cancellationToken)
+    {
+        var status = await _workOrderService.GetStatusByIdAsync(id, cancellationToken);
+        return status is null ? NotFound() : Ok(status);
     }
 
     [HttpPost("{id:guid}/start-diagnosis")]
@@ -70,20 +68,8 @@ public sealed class WorkOrdersController : ControllerBase
     [HttpGet("metrics/average-execution-time")]
     public async Task<ActionResult<AverageExecutionTimeResponse>> GetAverageExecutionTime(CancellationToken cancellationToken)
     {
-        var finishedOrders = await _dbContext.WorkOrders
-            .AsNoTracking()
-            .Where(item => item.ExecutionStartedAtUtc.HasValue && item.FinalizedAtUtc.HasValue)
-            .ToListAsync(cancellationToken);
-
-        if (finishedOrders.Count == 0)
-        {
-            return Ok(new AverageExecutionTimeResponse(0, 0));
-        }
-
-        var average = finishedOrders
-            .Average(item => (item.FinalizedAtUtc!.Value - item.ExecutionStartedAtUtc!.Value).TotalMinutes);
-
-        return Ok(new AverageExecutionTimeResponse(Math.Round(average, 2), finishedOrders.Count));
+        var response = await _workOrderService.GetAverageExecutionTimeAsync(cancellationToken);
+        return Ok(response);
     }
 
     private async Task<ActionResult<WorkOrderDetailResponse>> ApplyTransition(

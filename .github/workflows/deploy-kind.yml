@@ -1,0 +1,78 @@
+﻿name: deploy-kind
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-kind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Install kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+
+      - name: Terraform init
+        run: terraform -chdir=infra/terraform init
+
+      - name: Terraform validate
+        run: terraform -chdir=infra/terraform validate
+
+      - name: Terraform apply
+        run: terraform -chdir=infra/terraform apply -auto-approve
+
+      - name: Build local image
+        run: docker build -f ./src/OficinaMvp.Api/Dockerfile -t oficina-mvp-api:local .
+
+      - name: Load image into kind
+        run: kind load docker-image oficina-mvp-api:local --name oficina-local
+
+      - name: Create Kubernetes secrets
+        run: |
+          kubectl apply -f ./k8s/namespace.yaml
+
+          POSTGRES_PASSWORD="$(openssl rand -base64 32)"
+          JWT_KEY="$(openssl rand -base64 48)"
+          ADMIN_PASSWORD="$(openssl rand -base64 24)"
+          INTEGRATION_TOKEN="$(openssl rand -hex 32)"
+          CONNECTION_STRING="Host=oficina-postgres;Port=5432;Database=oficina;Username=oficina;Password=${POSTGRES_PASSWORD}"
+
+          kubectl -n oficina create secret generic oficina-api-secret \
+            --from-literal=Jwt__Key="${JWT_KEY}" \
+            --from-literal=AdminCredentials__Password="${ADMIN_PASSWORD}" \
+            --from-literal=Integration__Token="${INTEGRATION_TOKEN}" \
+            --from-literal=ConnectionStrings__DefaultConnection="${CONNECTION_STRING}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          kubectl -n oficina create secret generic oficina-postgres-secret \
+            --from-literal=POSTGRES_USER=oficina \
+            --from-literal=POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy manifests
+        run: kubectl apply -k ./k8s
+
+      - name: Wait for PostgreSQL
+        run: kubectl -n oficina rollout status statefulset/oficina-postgres --timeout=180s
+
+      - name: Wait for API
+        run: kubectl -n oficina rollout status deployment/oficina-api --timeout=180s
+
+      - name: Kubernetes state
+        run: kubectl -n oficina get pods,svc,hpa,pvc
+
+      - name: Smoke test
+        run: |
+          kubectl -n oficina port-forward svc/oficina-api 8080:80 &
+          PF_PID=$!
+          sleep 10
+          curl --fail http://localhost:8080/health/ready
+          curl --fail http://localhost:8080/swagger/v1/swagger.json
+          kill $PF_PID

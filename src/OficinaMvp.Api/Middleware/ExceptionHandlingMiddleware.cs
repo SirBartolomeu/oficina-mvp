@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using OficinaMvp.Api.Domain.Exceptions;
+using OficinaMvp.Domain.Exceptions;
 
 namespace OficinaMvp.Api.Middleware;
 
@@ -57,3 +57,4 @@ public sealed class ExceptionHandlingMiddleware
         await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
     }
 }
+

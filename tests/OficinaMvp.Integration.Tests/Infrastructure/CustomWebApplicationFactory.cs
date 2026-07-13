@@ -1,17 +1,17 @@
-using System.Data.Common;
+﻿using System.Data.Common;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using OficinaMvp.Api.Infrastructure.Persistence;
+using OficinaMvp.Infrastructure.Persistence;
 
 namespace OficinaMvp.Integration.Tests.Infrastructure;
 
 public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
-    private SqliteConnection? _connection;
+    private SqliteConnection _connection = null!;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -62,7 +62,7 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
         base.Dispose(disposing);
         if (disposing)
         {
-            _connection?.Dispose();
+            _connection.Dispose();
         }
     }
 }

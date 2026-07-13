@@ -1,5 +1,5 @@
-using OficinaMvp.Api.Domain.Exceptions;
-using OficinaMvp.Api.Domain.Validation;
+﻿using OficinaMvp.Domain.Exceptions;
+using OficinaMvp.Domain.Validation;
 
 namespace OficinaMvp.Domain.Tests.Validation;
 
@@ -33,3 +33,4 @@ public sealed class DocumentValidatorTests
         Assert.Throws<DomainException>(() => DocumentValidator.Normalize("11111111111"));
     }
 }
+

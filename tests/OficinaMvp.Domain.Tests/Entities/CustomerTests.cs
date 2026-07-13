@@ -1,5 +1,5 @@
-using OficinaMvp.Api.Domain.Entities;
-using OficinaMvp.Api.Domain.Exceptions;
+﻿using OficinaMvp.Domain.Entities;
+using OficinaMvp.Domain.Exceptions;
 
 namespace OficinaMvp.Domain.Tests.Entities;
 
@@ -39,3 +39,4 @@ public sealed class CustomerTests
         Assert.Throws<DomainException>(() => new Customer("Joao", "11111111111", null, null));
     }
 }
+

@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using OficinaMvp.Api.Application.Contracts;
+using OficinaMvp.Application.Contracts;
 using OficinaMvp.Integration.Tests.Infrastructure;
 using Xunit.Sdk;
 

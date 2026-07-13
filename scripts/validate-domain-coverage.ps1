@@ -4,13 +4,18 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$env:DOTNET_CLI_HOME = Join-Path $repoRoot ".dotnet_home"
+$env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE = "1"
+New-Item -ItemType Directory -Force -Path $env:DOTNET_CLI_HOME | Out-Null
+
 $projects = @(
     @{
         Name = "OficinaMvp.Domain.Tests"
         ProjectPath = "tests\OficinaMvp.Domain.Tests\OficinaMvp.Domain.Tests.csproj"
         TestResultsPath = "tests\OficinaMvp.Domain.Tests\TestResults"
         ScopeDescription = "Domain.*"
-        IncludeClassRegex = "^OficinaMvp\.Api\.Domain\."
+        IncludeClassRegex = "^OficinaMvp\.Domain\."
         IncludeFileRegex = "Domain[\\/]"
     },
     @{
@@ -18,7 +23,7 @@ $projects = @(
         ProjectPath = "tests\OficinaMvp.Integration.Tests\OficinaMvp.Integration.Tests.csproj"
         TestResultsPath = "tests\OficinaMvp.Integration.Tests\TestResults"
         ScopeDescription = "Domain.Entities.* + Domain.Exceptions.*"
-        IncludeClassRegex = "^OficinaMvp\.Api\.Domain\.(Entities|Exceptions)\."
+        IncludeClassRegex = "^OficinaMvp\.Domain\.(Entities|Exceptions)\."
         IncludeFileRegex = "Domain[\\/](Entities|Exceptions)[\\/]"
     }
 )

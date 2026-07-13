@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="820" viewBox="0 0 1500 820">
+  <style>text{font-family:Arial,sans-serif;font-size:18px;fill:#1f2933}.title{font-size:32px;font-weight:700}.box{fill:#edf6ff;stroke:#246b9b;stroke-width:2}.k8s{fill:#e8f7e8;stroke:#2f7d32;stroke-width:2}.secret{fill:#fff1c2;stroke:#a66a00;stroke-width:2}.db{fill:#ffe3d3;stroke:#b24b1f;stroke-width:2}.line{stroke:#333;stroke-width:2;marker-end:url(#arrow)}.small{font-size:14px}</style>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#333"/></marker></defs>
+  <text x="40" y="55" class="title">Arquitetura Fase 2 - Local, Docker e Kubernetes</text>
+  <rect x="60" y="120" width="300" height="170" rx="14" class="box"/><text x="105" y="155">Desenvolvimento local</text><text x="90" y="190" class="small">dotnet run</text><text x="90" y="215" class="small">SQLite ou Postgres configuravel</text><text x="90" y="240" class="small">Swagger :5245</text>
+  <rect x="60" y="370" width="300" height="170" rx="14" class="box"/><text x="110" y="405">Docker Compose</text><text x="90" y="440" class="small">oficina-api non-root</text><text x="90" y="465" class="small">oficina-db PostgreSQL</text><text x="90" y="490" class="small">mailpit opcional</text>
+  <rect x="480" y="120" width="900" height="540" rx="18" class="k8s"/><text x="820" y="155">Namespace oficina</text>
+  <rect x="530" y="205" width="260" height="140" rx="12" class="box"/><text x="590" y="240">Deployment API</text><text x="560" y="270" class="small">replicas + RollingUpdate</text><text x="560" y="295" class="small">readiness/liveness</text><text x="560" y="320" class="small">securityContext non-root</text>
+  <rect x="850" y="205" width="220" height="140" rx="12" class="box"/><text x="900" y="240">Service API</text><text x="885" y="270" class="small">ClusterIP</text><text x="885" y="295" class="small">porta 80 -> 8080</text>
+  <rect x="1120" y="205" width="210" height="140" rx="12" class="box"/><text x="1180" y="240">Ingress</text><text x="1155" y="270" class="small">opcional</text><text x="1155" y="295" class="small">oficina.local</text>
+  <rect x="530" y="410" width="260" height="140" rx="12" class="secret"/><text x="590" y="445">ConfigMap/Secret</text><text x="560" y="475" class="small">JWT, admin, DB</text><text x="560" y="500" class="small">sem segredo real prod</text>
+  <rect x="850" y="410" width="260" height="140" rx="12" class="db"/><text x="920" y="445">PostgreSQL</text><text x="885" y="475" class="small">StatefulSet</text><text x="885" y="500" class="small">PVC persistente</text>
+  <rect x="1140" y="410" width="190" height="140" rx="12" class="k8s"/><text x="1195" y="445">HPA</text><text x="1165" y="475" class="small">CPU 70%</text><text x="1165" y="500" class="small">memoria 75%</text>
+  <rect x="520" y="700" width="300" height="80" rx="12" class="box"/><text x="565" y="745">Terraform kind</text>
+  <rect x="900" y="700" width="300" height="80" rx="12" class="box"/><text x="965" y="745">GitHub Actions</text>
+  <line x1="360" y1="455" x2="530" y2="275" class="line"/><line x1="790" y1="275" x2="850" y2="275" class="line"/><line x1="1070" y1="275" x2="1120" y2="275" class="line"/><line x1="660" y1="345" x2="660" y2="410" class="line"/><line x1="790" y1="480" x2="850" y2="480" class="line"/><line x1="1070" y1="480" x2="1140" y2="480" class="line"/><line x1="670" y1="700" x2="670" y2="660" class="line"/><line x1="1050" y1="700" x2="1050" y2="660" class="line"/>
+</svg>

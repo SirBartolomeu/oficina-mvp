@@ -1,0 +1,32 @@
+﻿name: build-test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore ./OficinaMvp.sln --disable-parallel /m:1 /p:RestoreUseStaticGraphEvaluation=true --verbosity minimal
+
+      - name: Build
+        run: dotnet build ./OficinaMvp.sln --configuration Release --no-restore -m:1
+
+      - name: Test
+        run: dotnet test ./OficinaMvp.sln --configuration Release --no-build --verbosity minimal -m:1
+
+      - name: Critical domain coverage
+        shell: pwsh
+        run: ./scripts/validate-domain-coverage.ps1 -Minimum 80

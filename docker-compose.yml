@@ -1,23 +1,65 @@
-services:
+﻿services:
+  oficina-db:
+    image: postgres:16-alpine
+    container_name: oficina-mvp-db
+    environment:
+      POSTGRES_DB: oficina
+      POSTGRES_USER: oficina
+      POSTGRES_PASSWORD: oficina-local-password
+    ports:
+      - "5432:5432"
+    volumes:
+      - oficina_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oficina -d oficina"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:v1.20
+    container_name: oficina-mvp-mailpit
+    ports:
+      - "8025:8025"
+    restart: unless-stopped
+
   oficina-api:
     build:
       context: .
       dockerfile: src/OficinaMvp.Api/Dockerfile
+    image: oficina-mvp-api:local
     container_name: oficina-mvp-api
+    depends_on:
+      oficina-db:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: Data Source=/data/oficina.db
+      Database__Provider: Postgres
+      Database__UseMigrations: "false"
+      ConnectionStrings__DefaultConnection: Host=oficina-db;Port=5432;Database=oficina;Username=oficina;Password=oficina-local-password
       Jwt__Issuer: OficinaMvp
       Jwt__Audience: OficinaMvpClients
       Jwt__Key: OficinaMvp-ChaveJWT-SuperSecreta-Com-32-Caracteres
       Jwt__ExpirationMinutes: 120
       AdminCredentials__Username: admin
       AdminCredentials__Password: Admin@123
+      Integration__Token: oficina-integration-token-local-123456
+      Notifications__Mode: Smtp
+      Notifications__From: oficina@localhost
+      Notifications__ToOverride: cliente.demo@oficina.local
+      Notifications__Smtp__Host: mailpit
+      Notifications__Smtp__Port: 1025
+      SeedDemoData: "true"
     ports:
       - "8080:8080"
-    volumes:
-      - oficina_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health/ready >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
     restart: unless-stopped
 
 volumes:
-  oficina_data:
+  oficina_pg_data:

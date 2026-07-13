@@ -1,4 +1,4 @@
-# Build artifacts
+﻿# Build artifacts
 **/bin/
 **/obj/
 
@@ -27,6 +27,16 @@ security-report/temp/
 *.db
 *.db-shm
 *.db-wal
+.dotnet_home/
+terraform.tfstate
+terraform.tfstate.backup
+.terraform/
+
+# Local secrets
+*.tfvars
+!*.tfvars.example
+.env
+.env.*
 
 # OS junk
 .DS_Store

@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using OficinaMvp.Api.Application.Contracts;
-using OficinaMvp.Api.Domain.Entities;
-using OficinaMvp.Api.Infrastructure.Persistence;
+using OficinaMvp.Application.Contracts;
+using OficinaMvp.Application.Services;
 
 namespace OficinaMvp.Api.Controllers;
 
@@ -12,75 +10,45 @@ namespace OficinaMvp.Api.Controllers;
 [Route("api/services")]
 public sealed class ServicesController : ControllerBase
 {
-    private readonly WorkshopDbContext _dbContext;
+    private readonly WorkshopCatalogApplicationService _catalogService;
 
-    public ServicesController(WorkshopDbContext dbContext)
+    public ServicesController(WorkshopCatalogApplicationService catalogService)
     {
-        _dbContext = dbContext;
+        _catalogService = catalogService;
     }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyCollection<RepairServiceResponse>>> GetAll(CancellationToken cancellationToken)
     {
-        var services = await _dbContext.RepairServices
-            .AsNoTracking()
-            .OrderBy(item => item.Name)
-            .Select(item => item.ToResponse())
-            .ToListAsync(cancellationToken);
-
-        return Ok(services);
+        var services = await _catalogService.ListRepairServicesAsync(cancellationToken);
+        return Ok(services.Select(item => item.ToResponse()).ToList());
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<RepairServiceResponse>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var service = await _dbContext.RepairServices
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
-
-        if (service is null)
-        {
-            return NotFound();
-        }
-
-        return Ok(service.ToResponse());
+        var service = await _catalogService.GetRepairServiceByIdAsync(id, cancellationToken);
+        return service is null ? NotFound() : Ok(service.ToResponse());
     }
 
     [HttpPost]
     public async Task<ActionResult<RepairServiceResponse>> Create([FromBody] UpsertRepairServiceRequest request, CancellationToken cancellationToken)
     {
-        var service = new RepairService(request.Name, request.Description, request.LaborPrice, request.AverageDurationMinutes);
-        _dbContext.RepairServices.Add(service);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
+        var service = await _catalogService.CreateRepairServiceAsync(request, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = service.Id }, service.ToResponse());
     }
 
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<RepairServiceResponse>> Update(Guid id, [FromBody] UpsertRepairServiceRequest request, CancellationToken cancellationToken)
     {
-        var service = await _dbContext.RepairServices.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
-        if (service is null)
-        {
-            return NotFound();
-        }
-
-        service.Update(request.Name, request.Description, request.LaborPrice, request.AverageDurationMinutes);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(service.ToResponse());
+        var service = await _catalogService.UpdateRepairServiceAsync(id, request, cancellationToken);
+        return service is null ? NotFound() : Ok(service.ToResponse());
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var service = await _dbContext.RepairServices.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
-        if (service is null)
-        {
-            return NotFound();
-        }
-
-        _dbContext.RepairServices.Remove(service);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        return NoContent();
+        var deleted = await _catalogService.DeleteRepairServiceAsync(id, cancellationToken);
+        return deleted ? NoContent() : NotFound();
     }
 }

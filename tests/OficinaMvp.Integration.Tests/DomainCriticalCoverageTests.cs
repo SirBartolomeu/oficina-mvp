@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using OficinaMvp.Api.Application.Contracts;
+using OficinaMvp.Application.Contracts;
 using OficinaMvp.Integration.Tests.Infrastructure;
 using Xunit.Sdk;
 
@@ -213,3 +213,4 @@ public sealed class DomainCriticalCoverageTests : IClassFixture<CustomWebApplica
         return remainder < 2 ? 0 : 11 - remainder;
     }
 }
+

@@ -1,0 +1,66 @@
+﻿apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: oficina-postgres
+  namespace: oficina
+  labels:
+    app.kubernetes.io/name: oficina-postgres
+spec:
+  serviceName: oficina-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oficina-postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: oficina-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: oficina
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: oficina-postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: oficina-postgres-secret
+                  key: POSTGRES_PASSWORD
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "oficina", "-d", "oficina"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "oficina", "-d", "oficina"]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: oficina-postgres-data

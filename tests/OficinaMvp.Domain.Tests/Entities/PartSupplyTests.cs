@@ -1,5 +1,5 @@
-using OficinaMvp.Api.Domain.Entities;
-using OficinaMvp.Api.Domain.Exceptions;
+﻿using OficinaMvp.Domain.Entities;
+using OficinaMvp.Domain.Exceptions;
 
 namespace OficinaMvp.Domain.Tests.Entities;
 
@@ -64,3 +64,4 @@ public sealed class PartSupplyTests
         Assert.Throws<DomainException>(() => part.RemoveFromStock(2));
     }
 }
+

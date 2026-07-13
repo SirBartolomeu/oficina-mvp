@@ -1,5 +1,5 @@
-using OficinaMvp.Api.Domain.Entities;
-using OficinaMvp.Api.Domain.Exceptions;
+﻿using OficinaMvp.Domain.Entities;
+using OficinaMvp.Domain.Exceptions;
 
 namespace OficinaMvp.Domain.Tests.Entities;
 
@@ -58,3 +58,4 @@ public sealed class VehicleTests
         Assert.Throws<DomainException>(() => vehicle.Update("XXX1", "Volkswagen", "Gol", 2020));
     }
 }
+

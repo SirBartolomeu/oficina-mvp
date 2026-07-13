@@ -1,5 +1,5 @@
-using OficinaMvp.Api.Domain.Entities;
-using OficinaMvp.Api.Domain.Exceptions;
+using OficinaMvp.Domain.Entities;
+using OficinaMvp.Domain.Exceptions;
 
 namespace OficinaMvp.Domain.Tests.WorkOrders;
 
@@ -67,15 +67,15 @@ public sealed class WorkOrderTests
     private static WorkOrder BuildDefaultWorkOrder(DateTime? now = null)
     {
         var createdAt = now ?? DateTime.UtcNow;
-        var service = new WorkOrderServiceLine(Guid.NewGuid(), "Troca de óleo", 1, 120m);
-        var part = new WorkOrderPartLine(Guid.NewGuid(), "Filtro de óleo", 2, 40m);
+        var service = new WorkOrderServiceLine(Guid.NewGuid(), "Troca de oleo", 1, 120m);
+        var part = new WorkOrderPartLine(Guid.NewGuid(), "Filtro de oleo", 2, 40m);
 
         return new WorkOrder(
             Guid.NewGuid(),
             Guid.NewGuid(),
             new[] { service },
             new[] { part },
-            "OS para revisão básica.",
+            "OS para revisao basica.",
             createdAt);
     }
 }

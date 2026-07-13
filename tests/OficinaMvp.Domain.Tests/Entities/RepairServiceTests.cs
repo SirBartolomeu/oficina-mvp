@@ -1,5 +1,5 @@
-using OficinaMvp.Api.Domain.Entities;
-using OficinaMvp.Api.Domain.Exceptions;
+﻿using OficinaMvp.Domain.Entities;
+using OficinaMvp.Domain.Exceptions;
 
 namespace OficinaMvp.Domain.Tests.Entities;
 
@@ -37,3 +37,4 @@ public sealed class RepairServiceTests
         Assert.Throws<DomainException>(() => service.Update("Troca", "Descricao", 10m, 0));
     }
 }
+

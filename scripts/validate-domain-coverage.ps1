@@ -16,7 +16,6 @@ $projects = @(
         TestResultsPath = "tests\OficinaMvp.Domain.Tests\TestResults"
         ScopeDescription = "Domain.*"
         IncludeClassRegex = "^OficinaMvp\.Domain\."
-        IncludeFileRegex = "Domain[\\/]"
     },
     @{
         Name = "OficinaMvp.Integration.Tests"
@@ -24,7 +23,6 @@ $projects = @(
         TestResultsPath = "tests\OficinaMvp.Integration.Tests\TestResults"
         ScopeDescription = "Domain.Entities.* + Domain.Exceptions.*"
         IncludeClassRegex = "^OficinaMvp\.Domain\.(Entities|Exceptions)\."
-        IncludeFileRegex = "Domain[\\/](Entities|Exceptions)[\\/]"
     }
 )
 
@@ -34,7 +32,7 @@ foreach ($project in $projects) {
     Write-Host "==> Running $($project.Name) with coverage collection..."
     Remove-Item -Recurse -Force $project.TestResultsPath -ErrorAction SilentlyContinue
 
-    dotnet test $project.ProjectPath --collect:"XPlat Code Coverage" --verbosity minimal -m:1
+    dotnet test $project.ProjectPath --collect:"XPlat Code Coverage" --verbosity minimal --maxcpucount:1
     if ($LASTEXITCODE -ne 0) {
         throw "Tests failed for $($project.Name)."
     }
@@ -51,8 +49,7 @@ foreach ($project in $projects) {
     $classes = @($coverageXml.SelectNodes("//class"))
 
     $domainClasses = $classes | Where-Object {
-        $_.name -match $project.IncludeClassRegex -or
-        $_.filename -match $project.IncludeFileRegex
+        $_.name -match $project.IncludeClassRegex
     }
 
     $totalLines = 0

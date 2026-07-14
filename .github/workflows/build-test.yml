@@ -22,10 +22,10 @@ jobs:
         run: dotnet restore ./OficinaMvp.sln --disable-parallel /m:1 /p:RestoreUseStaticGraphEvaluation=true --verbosity minimal
 
       - name: Build
-        run: dotnet build ./OficinaMvp.sln --configuration Release --no-restore -m:1
+        run: dotnet build ./OficinaMvp.sln --configuration Release --no-restore --maxcpucount:1
 
       - name: Test
-        run: dotnet test ./OficinaMvp.sln --configuration Release --no-build --verbosity minimal -m:1
+        run: dotnet test ./OficinaMvp.sln --configuration Release --no-build --verbosity minimal --maxcpucount:1
 
       - name: Critical domain coverage
         shell: pwsh

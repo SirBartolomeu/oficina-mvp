@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OficinaMvp.Domain.Entities;
 
@@ -43,14 +43,14 @@ public static class WorkshopDemoSeeder
         }
         else if (vehicle.CustomerId != customer.Id)
         {
-            logger.LogWarning("A placa demo {Plate} já existe vinculada a outro cliente. Seed de veículo ignorada.", demoPlate);
+            logger.LogWarning("A placa demo {Plate} ja existe vinculada a outro cliente. Seed de veiculo ignorada.", demoPlate);
         }
 
-        changes += await EnsureServiceAsync(dbContext, "Troca de óleo", "Troca de óleo e filtros", 150m, 60, cancellationToken);
+        changes += await EnsureServiceAsync(dbContext, "Troca de oleo", "Troca de oleo e filtros", 150m, 60, cancellationToken);
         changes += await EnsureServiceAsync(dbContext, "Alinhamento", "Alinhamento e balanceamento", 120m, 45, cancellationToken);
 
-        changes += await EnsurePartAsync(dbContext, "Filtro de óleo", 30m, 20, cancellationToken);
-        changes += await EnsurePartAsync(dbContext, "?leo 5W30 (1L)", 45m, 50, cancellationToken);
+        changes += await EnsurePartAsync(dbContext, "Filtro de oleo", 30m, 20, cancellationToken);
+        changes += await EnsurePartAsync(dbContext, "Oleo 5W30 (1L)", 45m, 50, cancellationToken);
 
         if (changes == 0)
         {
@@ -58,7 +58,7 @@ public static class WorkshopDemoSeeder
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        logger.LogInformation("Seed de dados de demonstração aplicado. Registros incluídos: {Changes}.", changes);
+        logger.LogInformation("Seed de dados de demonstracao aplicado. Registros incluidos: {Changes}.", changes);
     }
 
     private static async Task<int> EnsureServiceAsync(

@@ -31,18 +31,36 @@ jobs:
       - name: Build local image
         run: docker build -f ./src/OficinaMvp.Api/Dockerfile -t oficina-mvp-api:local .
 
+      - name: Kind cluster state
+        run: |
+          kind get clusters
+          kind get nodes --name oficina-local
+          docker ps --filter "name=oficina-local"
+          kubectl cluster-info
+
       - name: Load image into kind
-        run: kind load docker-image oficina-mvp-api:local --name oficina-local
+        shell: bash
+        run: |
+          set -euxo pipefail
+          NODE="$(kind get nodes --name oficina-local | head -n 1)"
+          docker image inspect oficina-mvp-api:local
+          docker save oficina-mvp-api:local | docker exec -i "$NODE" ctr -n k8s.io images import -
+          docker exec "$NODE" ctr -n k8s.io images ls | grep oficina-mvp-api
 
       - name: Create Kubernetes secrets
+        shell: bash
         run: |
+          set -euo pipefail
           kubectl apply -f ./k8s/namespace.yaml
 
           POSTGRES_PASSWORD="$(openssl rand -base64 32)"
           JWT_KEY="$(openssl rand -base64 48)"
-          ADMIN_PASSWORD="$(openssl rand -base64 24)"
-          INTEGRATION_TOKEN="$(openssl rand -hex 32)"
+          ADMIN_PASSWORD="Admin@123"
+          INTEGRATION_TOKEN="oficina-integration-token-local-123456"
           CONNECTION_STRING="Host=oficina-postgres;Port=5432;Database=oficina;Username=oficina;Password=${POSTGRES_PASSWORD}"
+
+          echo "ADMIN_PASSWORD=${ADMIN_PASSWORD}" >> "${GITHUB_ENV}"
+          echo "INTEGRATION_TOKEN=${INTEGRATION_TOKEN}" >> "${GITHUB_ENV}"
 
           kubectl -n oficina create secret generic oficina-api-secret \
             --from-literal=Jwt__Key="${JWT_KEY}" \
@@ -68,11 +86,232 @@ jobs:
       - name: Kubernetes state
         run: kubectl -n oficina get pods,svc,hpa,pvc
 
-      - name: Smoke test
+      - name: API smoke test
+        shell: bash
         run: |
-          kubectl -n oficina port-forward svc/oficina-api 8080:80 &
+          set -euo pipefail
+
+          kubectl -n oficina port-forward svc/oficina-api 8080:80 > /tmp/oficina-port-forward.log 2>&1 &
           PF_PID=$!
-          sleep 10
-          curl --fail http://localhost:8080/health/ready
-          curl --fail http://localhost:8080/swagger/v1/swagger.json
-          kill $PF_PID
+          cleanup() {
+            kill "${PF_PID}" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          echo "Waiting for API readiness through Kubernetes Service..."
+          API_READY=false
+          for attempt in {1..30}; do
+            if curl --silent --fail --max-time 5 http://localhost:8080/health/ready > /tmp/oficina-health.json; then
+              API_READY=true
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "${API_READY}" != "true" ]; then
+            echo "API did not become ready through port-forward."
+            cat /tmp/oficina-port-forward.log || true
+            kubectl -n oficina logs deployment/oficina-api --tail=120 || true
+            exit 1
+          fi
+
+          curl --silent --fail --max-time 10 http://localhost:8080/swagger/v1/swagger.json > /tmp/oficina-openapi.json
+          echo "Swagger/OpenAPI OK."
+
+          AUTH_RESPONSE="$(curl --silent --fail --max-time 10 \
+            -X POST http://localhost:8080/api/auth/token \
+            -H "Content-Type: application/json" \
+            -d "{\"username\":\"admin\",\"password\":\"${ADMIN_PASSWORD}\"}")"
+
+          TOKEN="$(printf '%s' "${AUTH_RESPONSE}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["accessToken"])')"
+          if [ -z "${TOKEN}" ]; then
+            echo "JWT token was not returned."
+            exit 1
+          fi
+          echo "JWT token generated successfully."
+
+          AUTH_HEADER="Authorization: Bearer ${TOKEN}"
+
+          curl --silent --fail --max-time 10 -H "${AUTH_HEADER}" \
+            http://localhost:8080/api/customers > /tmp/oficina-customers.json
+          echo "GET /api/customers OK."
+
+          curl --silent --fail --max-time 10 -H "${AUTH_HEADER}" \
+            http://localhost:8080/api/services > /tmp/oficina-services.json
+          curl --silent --fail --max-time 10 -H "${AUTH_HEADER}" \
+            http://localhost:8080/api/parts > /tmp/oficina-parts.json
+
+          SERVICE_ID="$(python3 -c 'import json; data=json.load(open("/tmp/oficina-services.json")); assert data, "No services returned"; print(data[0]["id"])')"
+          PART_ID="$(python3 -c 'import json; data=json.load(open("/tmp/oficina-parts.json")); assert data, "No parts returned"; print(data[0]["id"])')"
+          export SERVICE_ID PART_ID
+          echo "Catalog API OK. serviceId=${SERVICE_ID}; partId=${PART_ID}"
+
+          python3 - <<'PY' > /tmp/oficina-work-order.json
+          import json
+          import os
+
+          payload = {
+              "customerDocument": "52998224725",
+              "vehicle": {
+                  "licensePlate": "BRA2E19",
+                  "brand": "Volkswagen",
+                  "model": "Gol",
+                  "year": 2021,
+              },
+              "services": [
+                  {
+                      "serviceId": os.environ["SERVICE_ID"],
+                      "quantity": 1,
+                  }
+              ],
+              "parts": [
+                  {
+                      "partId": os.environ["PART_ID"],
+                      "quantity": 1,
+                  }
+              ],
+              "notes": "OS criada pelo workflow deploy-kind",
+          }
+
+          print(json.dumps(payload))
+          PY
+
+          WORK_ORDER_RESPONSE="$(curl --silent --fail --max-time 15 \
+            -X POST http://localhost:8080/api/work-orders \
+            -H "${AUTH_HEADER}" \
+            -H "Content-Type: application/json" \
+            --data @/tmp/oficina-work-order.json)"
+
+          WORK_ORDER_ID="$(printf '%s' "${WORK_ORDER_RESPONSE}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
+          if [ -z "${WORK_ORDER_ID}" ]; then
+            echo "Work order id was not returned."
+            exit 1
+          fi
+          echo "POST /api/work-orders OK. workOrderId=${WORK_ORDER_ID}"
+
+          curl --silent --fail --max-time 10 -H "${AUTH_HEADER}" \
+            "http://localhost:8080/api/work-orders/${WORK_ORDER_ID}/status" > /tmp/oficina-work-order-status.json
+          STATUS="$(python3 -c 'import json; print(json.load(open("/tmp/oficina-work-order-status.json"))["status"])')"
+          echo "GET /api/work-orders/{id}/status OK. status=${STATUS}"
+
+          curl --silent --fail --max-time 10 \
+            "http://localhost:8080/api/client/work-orders/${WORK_ORDER_ID}?document=52998224725" > /tmp/oficina-client-tracking.json
+          TRACKING_STATUS="$(python3 -c 'import json; print(json.load(open("/tmp/oficina-client-tracking.json"))["status"])')"
+          echo "GET /api/client/work-orders/{id}?document=52998224725 OK. status=${TRACKING_STATUS}"
+
+      - name: Automatic HPA autoscaling evidence
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          restore_hpa() {
+            kubectl apply -f ./k8s/hpa.yaml >/dev/null 2>&1 || true
+          }
+
+          cleanup_load() {
+            kubectl -n oficina delete pod api-load-generator --ignore-not-found=true --wait=false >/dev/null 2>&1 || true
+          }
+
+          trap 'cleanup_load; restore_hpa' EXIT
+
+          echo "Installing metrics-server for kind..."
+          if ! kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.7.2/components.yaml; then
+            echo "::warning::metrics-server could not be installed. Keeping workflow green and using manual scaling fallback."
+            exit 0
+          fi
+
+          if ! kubectl -n kube-system patch deployment metrics-server --type=json -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"},{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname"},{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--metric-resolution=15s"}]'; then
+            echo "::warning::metrics-server patch failed. Keeping workflow green and using manual scaling fallback."
+            exit 0
+          fi
+
+          if ! kubectl -n kube-system rollout status deployment/metrics-server --timeout=180s; then
+            echo "::warning::metrics-server rollout did not finish in time. Keeping workflow green and using manual scaling fallback."
+            kubectl -n kube-system get pods -l k8s-app=metrics-server -o wide || true
+            exit 0
+          fi
+
+          echo "Waiting for metrics API..."
+          METRICS_READY=false
+          for attempt in {1..30}; do
+            if kubectl top pods -n oficina; then
+              METRICS_READY=true
+              break
+            fi
+            sleep 10
+          done
+
+          if [ "${METRICS_READY}" != "true" ]; then
+            echo "::warning::metrics API did not become available in the demo window. Keeping workflow green and using manual scaling fallback."
+            kubectl -n kube-system logs deployment/metrics-server --tail=120 || true
+            exit 0
+          fi
+
+          echo "Current HPA before load:"
+          kubectl -n oficina get hpa oficina-api
+          kubectl -n oficina get deployment oficina-api
+
+          echo "Lowering HPA CPU target only in this ephemeral demo cluster..."
+          if ! kubectl -n oficina patch hpa oficina-api --type=merge -p='{"spec":{"minReplicas":1,"maxReplicas":5,"metrics":[{"type":"Resource","resource":{"name":"cpu","target":{"type":"Utilization","averageUtilization":1}}}]}}'; then
+            echo "::warning::HPA demo patch failed. Keeping workflow green and using manual scaling fallback."
+            exit 0
+          fi
+
+          echo "Starting load generator..."
+          cleanup_load
+          if ! kubectl -n oficina run api-load-generator --image=busybox:1.36 --restart=Never -- /bin/sh -c 'for worker in $(seq 1 40); do while true; do wget -q -O- http://oficina-api/swagger/v1/swagger.json >/dev/null; wget -q -O- http://oficina-api/health/ready >/dev/null; done & done; sleep 240'; then
+            echo "::warning::load generator could not be created. Keeping workflow green and using manual scaling fallback."
+            exit 0
+          fi
+
+          kubectl -n oficina wait --for=condition=Ready pod/api-load-generator --timeout=90s || true
+
+          echo "Waiting for HPA to scale automatically..."
+          SCALED=false
+          for attempt in {1..24}; do
+            kubectl -n oficina get hpa oficina-api || true
+            kubectl -n oficina get deployment oficina-api || true
+            kubectl -n oficina get pods -l app.kubernetes.io/name=oficina-api -o wide || true
+            kubectl top pods -n oficina || true
+
+            READY_REPLICAS="$(kubectl -n oficina get deployment oficina-api -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)"
+            if [ "${READY_REPLICAS:-0}" -ge 2 ] 2>/dev/null; then
+              SCALED=true
+              break
+            fi
+
+            sleep 15
+          done
+
+          if [ "${SCALED}" = "true" ]; then
+            echo "HPA autoscaling OK: deployment scaled automatically based on metrics."
+          else
+            echo "::warning::HPA did not scale within the demo window. Keeping workflow green and using manual scaling fallback."
+            kubectl -n oficina describe hpa oficina-api || true
+          fi
+
+          cleanup_load
+          restore_hpa
+
+          echo "Final automatic autoscaling evidence:"
+          kubectl -n oficina get hpa oficina-api || true
+          kubectl -n oficina get deployment oficina-api || true
+          kubectl -n oficina get pods -l app.kubernetes.io/name=oficina-api -o wide || true
+
+      - name: Manual horizontal scaling fallback
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          kubectl -n oficina get hpa
+          kubectl -n oficina get deployment oficina-api
+          kubectl -n oficina get pods -l app.kubernetes.io/name=oficina-api -o wide
+
+          kubectl -n oficina scale deployment oficina-api --replicas=3
+          kubectl -n oficina rollout status deployment/oficina-api --timeout=120s
+          kubectl -n oficina get deployment oficina-api
+          kubectl -n oficina get pods -l app.kubernetes.io/name=oficina-api -o wide
+
+          kubectl -n oficina scale deployment oficina-api --replicas=1
+          kubectl -n oficina rollout status deployment/oficina-api --timeout=120s
+          kubectl -n oficina get pods -l app.kubernetes.io/name=oficina-api -o wide

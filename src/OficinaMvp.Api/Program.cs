@@ -122,7 +122,7 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<WorkshopDbContext>();
     var useMigrations = app.Configuration.GetValue<bool>("Database:UseMigrations");
 
-    if (useMigrations && !app.Environment.IsEnvironment("Testing"))
+    if (app.Environment.IsProduction() || useMigrations)
     {
         await dbContext.Database.MigrateAsync();
     }

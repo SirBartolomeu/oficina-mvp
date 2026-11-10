@@ -1,0 +1,33 @@
+services:
+  execution-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: oficina_execution
+      POSTGRES_USER: execution
+      POSTGRES_PASSWORD: execution-local-password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U execution -d oficina_execution"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    volumes:
+      - execution_pg_data:/var/lib/postgresql/data
+
+  execution-api:
+    build:
+      context: .
+      dockerfile: services/Oficina.Execution/Dockerfile
+    image: oficina-execution:local
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Database__Provider: Postgres
+      ConnectionStrings__DefaultConnection: Host=execution-db;Port=5432;Database=oficina_execution;Username=execution;Password=execution-local-password
+      InternalToken: execution-local-internal-token-only-123456
+    depends_on:
+      execution-db:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
+
+volumes:
+  execution_pg_data:

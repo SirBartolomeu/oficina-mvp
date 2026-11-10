@@ -54,6 +54,7 @@ public sealed class WorkOrderFlowTests : IClassFixture<CustomWebApplicationFacto
             },
             Services = new[] { new RequestedService { ServiceId = serviceId, Quantity = 1 } },
             Parts = new[] { new RequestedPart { PartId = partId, Quantity = 2 } },
+            BranchId = "sp-centro",
             Notes = "Revisão de 10 mil km"
         };
 
@@ -63,6 +64,7 @@ public sealed class WorkOrderFlowTests : IClassFixture<CustomWebApplicationFacto
 
         var createdId = createdWorkOrder.RootElement.GetProperty("id").GetGuid();
         Assert.Equal("Received", createdWorkOrder.RootElement.GetProperty("status").GetString());
+        Assert.Equal("sp-centro", createdWorkOrder.RootElement.GetProperty("branchId").GetString());
         Assert.Equal(210m, createdWorkOrder.RootElement.GetProperty("budgetTotal").GetDecimal());
 
         var afterDiagnosis = await PostAndReadJsonAsync($"/api/work-orders/{createdId}/start-diagnosis");

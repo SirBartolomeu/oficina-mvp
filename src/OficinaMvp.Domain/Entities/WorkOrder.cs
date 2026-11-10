@@ -14,7 +14,8 @@ public sealed class WorkOrder
         IEnumerable<WorkOrderServiceLine> services,
         IEnumerable<WorkOrderPartLine> parts,
         string? notes,
-        DateTime createdAtUtc)
+        DateTime createdAtUtc,
+        string? branchId = null)
     {
         var serviceItems = services.ToList();
         var partItems = parts.ToList();
@@ -28,9 +29,15 @@ public sealed class WorkOrder
         CustomerId = customerId;
         VehicleId = vehicleId;
         Notes = NormalizeOptional(notes);
+        BranchId = string.IsNullOrWhiteSpace(branchId) ? null : branchId.Trim();
+        if (BranchId is { Length: > 64 })
+        {
+            throw new DomainException("O identificador da filial deve ter no máximo 64 caracteres.");
+        }
         CreatedAtUtc = createdAtUtc;
         UpdatedAtUtc = createdAtUtc;
         Status = WorkOrderStatus.Received;
+        ProcessState = WorkOrderProcessState.AwaitingBudget;
         Services = serviceItems;
         Parts = partItems;
         StatusHistory = new List<WorkOrderStatusHistory>
@@ -45,7 +52,9 @@ public sealed class WorkOrder
     public Guid CustomerId { get; private set; }
     public Guid VehicleId { get; private set; }
     public WorkOrderStatus Status { get; private set; }
+    public WorkOrderProcessState ProcessState { get; private set; }
     public string Notes { get; private set; } = string.Empty;
+    public string? BranchId { get; private set; }
     public decimal ServicesTotal { get; private set; }
     public decimal PartsTotal { get; private set; }
     public decimal BudgetTotal { get; private set; }
@@ -79,6 +88,7 @@ public sealed class WorkOrder
         }
 
         BudgetSentAtUtc = changedAtUtc;
+        ProcessState = WorkOrderProcessState.AwaitingApproval;
         ChangeStatus(WorkOrderStatus.AwaitingApproval, changedAtUtc, "Orçamento enviado para aprovação do cliente.");
     }
 
@@ -87,12 +97,58 @@ public sealed class WorkOrder
         EnsureCurrentStatus(WorkOrderStatus.AwaitingApproval);
         ApprovedAtUtc = changedAtUtc;
         ExecutionStartedAtUtc = changedAtUtc;
+        ProcessState = WorkOrderProcessState.InExecution;
         ChangeStatus(WorkOrderStatus.InExecution, changedAtUtc, "Cliente aprovou o orçamento. Serviço em execução.");
+    }
+
+    public void ApproveBudgetForPayment(DateTime changedAtUtc)
+    {
+        EnsureCurrentStatus(WorkOrderStatus.AwaitingApproval);
+        EnsureProcessState(WorkOrderProcessState.AwaitingApproval);
+        ApprovedAtUtc = changedAtUtc;
+        ProcessState = WorkOrderProcessState.AwaitingStockReservation;
+        RecordProcessNote(changedAtUtc, "Orçamento aprovado. Aguardando reserva de peças.");
+    }
+
+    public void ConfirmStockReservation(DateTime changedAtUtc)
+    {
+        EnsureProcessState(WorkOrderProcessState.AwaitingStockReservation);
+        ProcessState = WorkOrderProcessState.AwaitingPayment;
+        RecordProcessNote(changedAtUtc, "Peças reservadas. Aguardando pagamento.");
+    }
+
+    public void ConfirmPayment(DateTime changedAtUtc)
+    {
+        EnsureProcessState(WorkOrderProcessState.AwaitingPayment);
+        ProcessState = WorkOrderProcessState.ReadyForExecution;
+        RecordProcessNote(changedAtUtc, "Pagamento confirmado. Aguardando execução.");
+    }
+
+    public void StartExecutionAfterPayment(DateTime changedAtUtc)
+    {
+        EnsureProcessState(WorkOrderProcessState.ReadyForExecution);
+        ExecutionStartedAtUtc = changedAtUtc;
+        ProcessState = WorkOrderProcessState.InExecution;
+        ChangeStatus(WorkOrderStatus.InExecution, changedAtUtc, "Pagamento confirmado. Serviço em execução.");
+    }
+
+    public void CancelBeforeExecution(DateTime changedAtUtc, string reason)
+    {
+        if (ProcessState is not WorkOrderProcessState.AwaitingStockReservation
+            and not WorkOrderProcessState.AwaitingPayment
+            and not WorkOrderProcessState.ReadyForExecution)
+        {
+            throw new DomainException("A OS só pode ser cancelada antes do início da execução.");
+        }
+
+        ProcessState = WorkOrderProcessState.Canceled;
+        RecordProcessNote(changedAtUtc, $"OS cancelada: {NormalizeOptional(reason)}");
     }
 
     public void RegisterBudgetRefusal(DateTime changedAtUtc, string? reason)
     {
         EnsureCurrentStatus(WorkOrderStatus.AwaitingApproval);
+        EnsureProcessState(WorkOrderProcessState.AwaitingApproval);
 
         var note = string.IsNullOrWhiteSpace(reason)
             ? "Cliente recusou o orcamento. OS permanece aguardando nova aprovacao."
@@ -106,6 +162,7 @@ public sealed class WorkOrder
     {
         EnsureCurrentStatus(WorkOrderStatus.InExecution);
         FinalizedAtUtc = changedAtUtc;
+        ProcessState = WorkOrderProcessState.Completed;
         ChangeStatus(WorkOrderStatus.Finalized, changedAtUtc, "Serviço finalizado.");
     }
 
@@ -129,6 +186,20 @@ public sealed class WorkOrder
         {
             throw new DomainException($"Transição inválida. Status atual: {Status}.");
         }
+    }
+
+    private void EnsureProcessState(WorkOrderProcessState expectedState)
+    {
+        if (ProcessState != expectedState)
+        {
+            throw new DomainException($"Transição de processo inválida. Estado atual: {ProcessState}.");
+        }
+    }
+
+    private void RecordProcessNote(DateTime changedAtUtc, string note)
+    {
+        UpdatedAtUtc = changedAtUtc;
+        StatusHistory.Add(new WorkOrderStatusHistory(Status, changedAtUtc, note));
     }
 
     private void ChangeStatus(WorkOrderStatus newStatus, DateTime changedAtUtc, string note)

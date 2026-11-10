@@ -63,7 +63,8 @@ public sealed class WorkOrderApplicationService
             serviceLines,
             partLines,
             request.Notes,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            request.BranchId);
 
         _repository.AddWorkOrder(workOrder);
         await _repository.SaveChangesAsync(cancellationToken);

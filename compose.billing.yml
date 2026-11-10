@@ -1,0 +1,19 @@
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    command: -jar DynamoDBLocal.jar -inMemory -sharedDb
+
+  billing-api:
+    build:
+      context: .
+      dockerfile: services/Oficina.Billing/Dockerfile
+    image: oficina-billing:local
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      DynamoDb__Table: oficina_billing_local
+      DynamoDb__ServiceUrl: http://dynamodb-local:8000
+      InternalToken: billing-local-internal-token-only-123456
+    depends_on:
+      - dynamodb-local
+    ports:
+      - "8082:8080"

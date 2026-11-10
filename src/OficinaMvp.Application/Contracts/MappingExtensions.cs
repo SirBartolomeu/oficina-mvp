@@ -17,7 +17,10 @@ public static class MappingExtensions
         new(part.Id, part.Name, part.UnitPrice, part.StockQuantity);
 
     public static WorkOrderSummaryResponse ToSummaryResponse(this WorkOrder workOrder) =>
-        new(workOrder.Id, workOrder.Status, workOrder.BudgetTotal, workOrder.CreatedAtUtc, workOrder.UpdatedAtUtc);
+        new(workOrder.Id, workOrder.Status, workOrder.BudgetTotal, workOrder.CreatedAtUtc, workOrder.UpdatedAtUtc)
+        {
+            BranchId = workOrder.BranchId
+        };
 
     public static WorkOrderStatusResponse ToStatusResponse(this WorkOrder workOrder) =>
         new(
@@ -66,7 +69,10 @@ public static class MappingExtensions
                     history.Status,
                     history.ChangedAtUtc,
                     history.Note))
-                .ToList());
+                .ToList())
+        {
+            BranchId = workOrder.BranchId
+        };
 
     public static ClientTrackingResponse ToClientTrackingResponse(this WorkOrder workOrder, string customerDocument) =>
         new(

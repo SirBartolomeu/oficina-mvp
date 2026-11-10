@@ -2,6 +2,7 @@ using Amazon;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Amazon.Runtime;
+using Amazon.SQS;
 using Oficina.Billing;
 using System.Security.Cryptography;
 using System.Text;
@@ -22,6 +23,19 @@ builder.Services.AddSingleton<IAmazonDynamoDB>(_ => string.IsNullOrWhiteSpace(se
         ServiceURL = serviceUrl
     }));
 builder.Services.AddScoped<BillingRepository>();
+builder.Services.AddScoped<IBudgetEventStore>(provider => provider.GetRequiredService<BillingRepository>());
+builder.Services.AddScoped<WorkOrderOpenedHandler>();
+if (!string.IsNullOrWhiteSpace(builder.Configuration["Messaging:WorkOrdersQueueUrl"]))
+{
+    var sqsServiceUrl = builder.Configuration["Messaging:SqsServiceUrl"];
+    builder.Services.AddSingleton<IAmazonSQS>(_ => string.IsNullOrWhiteSpace(sqsServiceUrl)
+        ? new AmazonSQSClient(RegionEndpoint.GetBySystemName(region))
+        : new AmazonSQSClient(new BasicAWSCredentials("local", "local"), new AmazonSQSConfig
+        {
+            ServiceURL = sqsServiceUrl
+        }));
+    builder.Services.AddHostedService<BillingSqsWorker>();
+}
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 

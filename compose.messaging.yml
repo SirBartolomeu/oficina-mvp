@@ -1,0 +1,7 @@
+services:
+  elasticmq:
+    image: softwaremill/elasticmq-native:latest
+    volumes:
+      - ./config/elasticmq.conf:/opt/elasticmq.conf:ro
+    ports:
+      - "127.0.0.1:9324:9324"

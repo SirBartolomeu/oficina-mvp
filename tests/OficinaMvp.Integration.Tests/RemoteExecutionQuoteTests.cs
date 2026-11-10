@@ -1,8 +1,12 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using OficinaMvp.Application.Contracts;
 using OficinaMvp.Application.Ports;
+using OficinaMvp.Infrastructure.Persistence;
 using OficinaMvp.Integration.Tests.Infrastructure;
 
 namespace OficinaMvp.Integration.Tests;
@@ -30,6 +34,16 @@ public sealed class RemoteExecutionQuoteTests
         Assert.Equal(190m, order.GetProperty("budgetTotal").GetDecimal());
         Assert.Equal("Diagnóstico remoto", order.GetProperty("services")[0].GetProperty("serviceName").GetString());
         Assert.Equal("Filtro remoto", order.GetProperty("parts")[0].GetProperty("partName").GetString());
+        using var scope = factory.Services.CreateScope();
+        var outbox = Assert.Single(await scope.ServiceProvider.GetRequiredService<WorkshopDbContext>()
+            .OutboxMessages.AsNoTracking().ToListAsync());
+        Assert.Null(outbox.PublishedAtUtc);
+        Assert.DoesNotContain("52998224725", outbox.PayloadJson);
+        using var envelope = JsonDocument.Parse(outbox.PayloadJson);
+        Assert.Equal("WorkOrderOpened", envelope.RootElement.GetProperty("eventType").GetString());
+        Assert.Equal(order.GetProperty("id").GetGuid(), envelope.RootElement.GetProperty("workOrderId").GetGuid());
+        Assert.Equal(19000, envelope.RootElement.GetProperty("payload").GetProperty("totalCents").GetInt64());
+        Assert.Equal(2, envelope.RootElement.GetProperty("payload").GetProperty("lines").GetArrayLength());
     }
 
     [Fact]
@@ -51,6 +65,9 @@ public sealed class RemoteExecutionQuoteTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var orders = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/work-orders");
         Assert.Empty(orders.EnumerateArray());
+        using var scope = factory.Services.CreateScope();
+        Assert.Empty(await scope.ServiceProvider.GetRequiredService<WorkshopDbContext>()
+            .OutboxMessages.AsNoTracking().ToListAsync());
     }
 
     [Fact]

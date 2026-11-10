@@ -4,10 +4,15 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Amazon;
+using Amazon.Runtime;
+using Amazon.SQS;
 using OficinaMvp.Api.Middleware;
+using OficinaMvp.Api.Messaging;
 using OficinaMvp.Application.Ports;
 using OficinaMvp.Application.Services;
 using OficinaMvp.Infrastructure.Execution;
+using OficinaMvp.Infrastructure.Messaging;
 using OficinaMvp.Infrastructure.Notifications;
 using OficinaMvp.Infrastructure.Persistence;
 using OficinaMvp.Infrastructure.Persistence.Repositories;
@@ -37,10 +42,28 @@ builder.Services.AddDbContext<WorkshopDbContext>(options =>
 });
 
 builder.Services.AddScoped<IWorkshopRepository, EfWorkshopRepository>();
+builder.Services.AddScoped<IIntegrationOutbox, EfIntegrationOutbox>();
 builder.Services.AddScoped<IWorkOrderStatusNotifier, WorkOrderStatusNotifier>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<WorkshopCatalogApplicationService>();
 builder.Services.AddScoped<WorkOrderApplicationService>();
+
+var billingQueueUrl = builder.Configuration["Messaging:BillingQueueUrl"];
+if (!string.IsNullOrWhiteSpace(billingQueueUrl))
+{
+    var sqsServiceUrl = builder.Configuration["Messaging:SqsServiceUrl"];
+    var region = RegionEndpoint.GetBySystemName(builder.Configuration["AWS:Region"] ?? "us-east-1");
+    builder.Services.AddSingleton<IAmazonSQS>(_ => string.IsNullOrWhiteSpace(sqsServiceUrl)
+        ? new AmazonSQSClient(region)
+        : new AmazonSQSClient(new BasicAWSCredentials("local", "local"), new AmazonSQSConfig
+        {
+            ServiceURL = sqsServiceUrl
+        }));
+    builder.Services.AddSingleton<IIntegrationMessageSender>(serviceProvider =>
+        new SqsIntegrationMessageSender(serviceProvider.GetRequiredService<IAmazonSQS>(), billingQueueUrl));
+    builder.Services.AddScoped<OutboxDispatcher>();
+    builder.Services.AddHostedService<OutboxBackgroundService>();
+}
 
 var executionBaseUrl = builder.Configuration["Execution:BaseUrl"];
 var executionInternalToken = builder.Configuration["Execution:InternalToken"];

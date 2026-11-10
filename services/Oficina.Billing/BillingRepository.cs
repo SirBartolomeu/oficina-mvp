@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace Oficina.Billing;
 
-public sealed class BillingRepository(IAmazonDynamoDB dynamo, IConfiguration configuration)
+public sealed class BillingRepository(IAmazonDynamoDB dynamo, IConfiguration configuration) : IBudgetEventStore
 {
     private readonly string _table = configuration["DynamoDb:Table"]
         ?? throw new InvalidOperationException("DynamoDb:Table é obrigatório.");
@@ -39,6 +39,49 @@ public sealed class BillingRepository(IAmazonDynamoDB dynamo, IConfiguration con
                 JsonSerializer.Serialize(current.Lines) == JsonSerializer.Serialize(proposed.Lines))
                 return current;
             throw new InvalidOperationException("Conflito ao criar orçamento.");
+        }
+    }
+
+    public async Task<Budget> CreateFromEventAsync(Guid eventId, Budget proposed,
+        CancellationToken cancellationToken)
+    {
+        if (eventId == Guid.Empty) throw new ArgumentException("Identificador do evento obrigatório.");
+        var inboxItem = InboxKey(eventId);
+        inboxItem["receivedAtUtc"] = new AttributeValue { S = DateTime.UtcNow.ToString("O") };
+        try
+        {
+            await dynamo.TransactWriteItemsAsync(new TransactWriteItemsRequest
+            {
+                TransactItems =
+                [
+                    new TransactWriteItem { Put = new Put
+                    {
+                        TableName = _table, Item = ToItem(proposed),
+                        ConditionExpression = "attribute_not_exists(pk)"
+                    } },
+                    new TransactWriteItem { Put = new Put
+                    {
+                        TableName = _table, Item = inboxItem,
+                        ConditionExpression = "attribute_not_exists(pk)"
+                    } }
+                ]
+            }, cancellationToken);
+            return proposed;
+        }
+        catch (TransactionCanceledException)
+        {
+            var inbox = await dynamo.GetItemAsync(new GetItemRequest
+            {
+                TableName = _table, Key = InboxKey(eventId), ConsistentRead = true
+            }, cancellationToken);
+            if (inbox.Item is not { Count: > 0 })
+                throw new InvalidOperationException("Conflito ao gravar orçamento e Inbox.");
+            var current = await GetAsync(proposed.WorkOrderId, proposed.Version, cancellationToken);
+            if (current is null || current.TotalCents != proposed.TotalCents ||
+                current.BranchId != proposed.BranchId ||
+                JsonSerializer.Serialize(current.Lines) != JsonSerializer.Serialize(proposed.Lines))
+                throw new InvalidOperationException("Evento já processado com orçamento diferente.");
+            return current;
         }
     }
 
@@ -93,6 +136,12 @@ public sealed class BillingRepository(IAmazonDynamoDB dynamo, IConfiguration con
     {
         ["pk"] = new() { S = $"OS#{workOrderId:N}" },
         ["sk"] = new() { S = $"BUDGET#{version:D6}" }
+    };
+
+    private static Dictionary<string, AttributeValue> InboxKey(Guid eventId) => new()
+    {
+        ["pk"] = new() { S = $"EVENT#{eventId:N}" },
+        ["sk"] = new() { S = "RECEIVED" }
     };
 
     private static Dictionary<string, AttributeValue> ToItem(Budget budget)

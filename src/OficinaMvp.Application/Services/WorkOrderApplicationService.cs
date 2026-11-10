@@ -11,14 +11,17 @@ public sealed class WorkOrderApplicationService
     private readonly IWorkshopRepository _repository;
     private readonly IWorkOrderStatusNotifier _notifier;
     private readonly IExecutionQuoteClient? _executionQuoteClient;
+    private readonly IIntegrationOutbox _outbox;
 
     public WorkOrderApplicationService(
         IWorkshopRepository repository,
         IWorkOrderStatusNotifier notifier,
+        IIntegrationOutbox outbox,
         IExecutionQuoteClient? executionQuoteClient = null)
     {
         _repository = repository;
         _notifier = notifier;
+        _outbox = outbox;
         _executionQuoteClient = executionQuoteClient;
     }
 
@@ -87,6 +90,8 @@ public sealed class WorkOrderApplicationService
             request.BranchId);
 
         _repository.AddWorkOrder(workOrder);
+        if (_executionQuoteClient is not null)
+            _outbox.Enqueue(CreateOpenedEvent(workOrder));
         await _repository.SaveChangesAsync(cancellationToken);
         await NotifyLatestStatusAsync(workOrder, cancellationToken);
 
@@ -254,6 +259,22 @@ public sealed class WorkOrderApplicationService
             !expected.TryGetValue(item.Id, out var quantity) || quantity != item.Quantity) ||
             quoted.Select(item => item.Id).Distinct().Count() != quoted.Count)
             throw new DomainException("A cotação da Execução não corresponde aos itens solicitados.");
+    }
+
+    private static IntegrationEnvelope<WorkOrderOpenedPayload> CreateOpenedEvent(WorkOrder order)
+    {
+        var lines = order.Services.Select(item => new WorkOrderOpenedLine(
+                "Service", item.ServiceId, item.ServiceName, item.Quantity,
+                checked((long)(item.UnitPrice * 100m))))
+            .Concat(order.Parts.Select(item => new WorkOrderOpenedLine(
+                "Part", item.PartSupplyId, item.PartName, item.Quantity,
+                checked((long)(item.UnitPrice * 100m)))))
+            .ToArray();
+        var payload = new WorkOrderOpenedPayload(1, lines,
+            checked((long)(order.BudgetTotal * 100m)), "BRL", order.CreatedAtUtc);
+        return new IntegrationEnvelope<WorkOrderOpenedPayload>(
+            Guid.NewGuid(), "WorkOrderOpened", 1, order.Id, Guid.NewGuid(),
+            order.Id, order.BranchId, order.CreatedAtUtc, payload);
     }
 
     private async Task<IReadOnlyCollection<WorkOrderPartLine>> BuildPartLinesAsync(

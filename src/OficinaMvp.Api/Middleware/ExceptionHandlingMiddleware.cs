@@ -35,6 +35,16 @@ public sealed class ExceptionHandlingMiddleware
             _logger.LogWarning(exception, "Erro de persistência.");
             await WriteErrorAsync(context, HttpStatusCode.Conflict, "Erro ao persistir dados. Verifique unicidade e dependências.");
         }
+        catch (HttpRequestException exception)
+        {
+            _logger.LogWarning(exception, "Falha ao consultar serviço de Execução.");
+            await WriteErrorAsync(context, HttpStatusCode.BadGateway, "Não foi possível consultar a Execução.");
+        }
+        catch (TaskCanceledException exception) when (!context.RequestAborted.IsCancellationRequested)
+        {
+            _logger.LogWarning(exception, "Tempo limite na consulta à Execução.");
+            await WriteErrorAsync(context, HttpStatusCode.GatewayTimeout, "A Execução não respondeu a tempo.");
+        }
         catch (Exception exception)
         {
             _logger.LogError(exception, "Erro inesperado.");

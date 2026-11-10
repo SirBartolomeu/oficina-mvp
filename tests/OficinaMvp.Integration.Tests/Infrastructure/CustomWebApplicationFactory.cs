@@ -5,6 +5,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OficinaMvp.Application.Ports;
 using OficinaMvp.Infrastructure.Persistence;
 
 namespace OficinaMvp.Integration.Tests.Infrastructure;
@@ -12,6 +13,7 @@ namespace OficinaMvp.Integration.Tests.Infrastructure;
 public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
     private SqliteConnection _connection = null!;
+    public IExecutionQuoteClient? ExecutionQuoteClient { get; set; }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -24,6 +26,9 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
+            if (ExecutionQuoteClient is not null)
+                services.AddSingleton(ExecutionQuoteClient);
+
             var dbContextDescriptor = services.SingleOrDefault(service =>
                 service.ServiceType == typeof(DbContextOptions<WorkshopDbContext>));
 

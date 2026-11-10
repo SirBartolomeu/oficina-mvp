@@ -12,6 +12,8 @@ services:
       retries: 12
     volumes:
       - execution_pg_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
 
   execution-api:
     build:

@@ -10,11 +10,16 @@ public sealed class WorkOrderApplicationService
 {
     private readonly IWorkshopRepository _repository;
     private readonly IWorkOrderStatusNotifier _notifier;
+    private readonly IExecutionQuoteClient? _executionQuoteClient;
 
-    public WorkOrderApplicationService(IWorkshopRepository repository, IWorkOrderStatusNotifier notifier)
+    public WorkOrderApplicationService(
+        IWorkshopRepository repository,
+        IWorkOrderStatusNotifier notifier,
+        IExecutionQuoteClient? executionQuoteClient = null)
     {
         _repository = repository;
         _notifier = notifier;
+        _executionQuoteClient = executionQuoteClient;
     }
 
     public async Task<WorkOrder> CreateAsync(CreateWorkOrderRequest request, CancellationToken cancellationToken)
@@ -54,8 +59,23 @@ public sealed class WorkOrderApplicationService
             vehicle.Update(normalizedPlate, request.Vehicle.Brand, request.Vehicle.Model, request.Vehicle.Year);
         }
 
-        var serviceLines = await BuildServiceLinesAsync(requestedServices, cancellationToken);
-        var partLines = await BuildPartLinesAsync(requestedParts, cancellationToken);
+        IReadOnlyCollection<WorkOrderServiceLine> serviceLines;
+        IReadOnlyCollection<WorkOrderPartLine> partLines;
+        if (_executionQuoteClient is null)
+        {
+            serviceLines = await BuildServiceLinesAsync(requestedServices, cancellationToken);
+            partLines = await BuildPartLinesAsync(requestedParts, cancellationToken);
+        }
+        else
+        {
+            var quote = await _executionQuoteClient.QuoteAsync(requestedServices, requestedParts, cancellationToken);
+            serviceLines = BuildQuotedServiceLines(requestedServices, quote.Services);
+            partLines = BuildQuotedPartLines(requestedParts, quote.Parts);
+            var calculatedCents = serviceLines.Sum(item => checked((long)(item.Subtotal * 100m)))
+                + partLines.Sum(item => checked((long)(item.Subtotal * 100m)));
+            if (calculatedCents != quote.TotalCents)
+                throw new DomainException("A cotação da Execução retornou total inconsistente.");
+        }
 
         var workOrder = new WorkOrder(
             customer.Id,
@@ -203,6 +223,37 @@ public sealed class WorkOrderApplicationService
                 return new WorkOrderServiceLine(service.Id, service.Name, item.Quantity, service.LaborPrice);
             })
             .ToList();
+    }
+
+    private static IReadOnlyCollection<WorkOrderServiceLine> BuildQuotedServiceLines(
+        IReadOnlyCollection<RequestedService> requested,
+        IReadOnlyCollection<ExecutionQuotedItem> quoted)
+    {
+        ValidateQuoteItems(requested.Select(item => (item.ServiceId, item.Quantity)), quoted);
+        return quoted.Select(item => new WorkOrderServiceLine(item.Id, item.Name, item.Quantity,
+            item.UnitPriceCents / 100m)).ToList();
+    }
+
+    private static IReadOnlyCollection<WorkOrderPartLine> BuildQuotedPartLines(
+        IReadOnlyCollection<RequestedPart> requested,
+        IReadOnlyCollection<ExecutionQuotedItem> quoted)
+    {
+        ValidateQuoteItems(requested.Select(item => (item.PartId, item.Quantity)), quoted);
+        return quoted.Select(item => new WorkOrderPartLine(item.Id, item.Name, item.Quantity,
+            item.UnitPriceCents / 100m)).ToList();
+    }
+
+    private static void ValidateQuoteItems(
+        IEnumerable<(Guid Id, int Quantity)> requested,
+        IReadOnlyCollection<ExecutionQuotedItem> quoted)
+    {
+        var expected = requested.GroupBy(item => item.Id)
+            .ToDictionary(group => group.Key, group => group.Sum(item => item.Quantity));
+        if (quoted.Count != expected.Count || quoted.Any(item => item.Id == Guid.Empty ||
+            string.IsNullOrWhiteSpace(item.Name) || item.Quantity <= 0 || item.UnitPriceCents < 0 ||
+            !expected.TryGetValue(item.Id, out var quantity) || quantity != item.Quantity) ||
+            quoted.Select(item => item.Id).Distinct().Count() != quoted.Count)
+            throw new DomainException("A cotação da Execução não corresponde aos itens solicitados.");
     }
 
     private async Task<IReadOnlyCollection<WorkOrderPartLine>> BuildPartLinesAsync(

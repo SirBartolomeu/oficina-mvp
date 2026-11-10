@@ -7,6 +7,7 @@ using Microsoft.OpenApi.Models;
 using OficinaMvp.Api.Middleware;
 using OficinaMvp.Application.Ports;
 using OficinaMvp.Application.Services;
+using OficinaMvp.Infrastructure.Execution;
 using OficinaMvp.Infrastructure.Notifications;
 using OficinaMvp.Infrastructure.Persistence;
 using OficinaMvp.Infrastructure.Persistence.Repositories;
@@ -40,6 +41,21 @@ builder.Services.AddScoped<IWorkOrderStatusNotifier, WorkOrderStatusNotifier>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<WorkshopCatalogApplicationService>();
 builder.Services.AddScoped<WorkOrderApplicationService>();
+
+var executionBaseUrl = builder.Configuration["Execution:BaseUrl"];
+var executionInternalToken = builder.Configuration["Execution:InternalToken"];
+if (!string.IsNullOrWhiteSpace(executionBaseUrl))
+{
+    if (!Uri.TryCreate(executionBaseUrl, UriKind.Absolute, out var executionUri) ||
+        string.IsNullOrWhiteSpace(executionInternalToken))
+        throw new InvalidOperationException("Execution:BaseUrl e Execution:InternalToken devem ser válidos.");
+
+    builder.Services.AddHttpClient<IExecutionQuoteClient, HttpExecutionQuoteClient>(client =>
+    {
+        client.BaseAddress = new Uri(executionUri.ToString().TrimEnd('/') + "/");
+        client.Timeout = TimeSpan.FromSeconds(5);
+    }).AddTypedClient((client, _) => new HttpExecutionQuoteClient(client, executionInternalToken));
+}
 
 var jwtOptions = builder.Configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
 if (string.IsNullOrWhiteSpace(jwtOptions.Key) || jwtOptions.Key.Length < 32)

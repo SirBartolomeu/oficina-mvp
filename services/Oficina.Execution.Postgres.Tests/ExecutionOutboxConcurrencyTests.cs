@@ -8,7 +8,6 @@ namespace Oficina.Execution.Postgres.Tests;
 
 public sealed class ExecutionOutboxConcurrencyTests
 {
-    [Fact]
     public async Task TwoDispatchersSelectOneOutboxMessageOnlyOnce()
     {
         var connectionString = Environment.GetEnvironmentVariable(

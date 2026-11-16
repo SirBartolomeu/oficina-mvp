@@ -31,7 +31,7 @@ docker build -f src/OficinaMvp.Api/Dockerfile -t oficina-os:local .
 kubectl kustomize k8s/services/os
 ```
 
-O teste PostgreSQL de concorrência requer `OS_POSTGRES_CONNECTION_STRING` apontando para um banco isolado. O workflow `os-ci` inicia PostgreSQL, executa as três suítes e aplica o gate de 80% com `scripts/validate-os-coverage.py`. Em `main`, após configurar AWS OIDC, publica a imagem no ECR e solicita rollout K3s por SSM.
+O cenário BDD de concorrência da Outbox requer `OS_POSTGRES_CONNECTION_STRING` apontando para um schema PostgreSQL isolado. O workflow `os-ci` inicia PostgreSQL, executa as três suítes, incluindo Gherkin, e aplica o gate de 80% com `scripts/validate-os-coverage.py`. Em `main`, após configurar AWS OIDC, publica a imagem no ECR e solicita rollout K3s por SSM.
 
 ## Deploy
 

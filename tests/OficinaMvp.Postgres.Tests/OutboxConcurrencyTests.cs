@@ -8,7 +8,6 @@ namespace OficinaMvp.Postgres.Tests;
 
 public sealed class OutboxConcurrencyTests
 {
-    [Fact]
     public async Task TwoDispatchersDoNotPublishTheSamePendingMessage()
     {
         var connectionString = Environment.GetEnvironmentVariable("OS_POSTGRES_CONNECTION_STRING")

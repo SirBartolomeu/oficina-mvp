@@ -189,7 +189,7 @@ def draw_second_page(pdf):
         "3. Após aprovação, Execução reserva estoque; falha de reserva encerra a tentativa sem cobrar.",
         "4. Billing cria tentativa de pagamento idempotente; só confirmação verificada libera execução.",
         "5. Execução consome a reserva, inicia e conclui o reparo; a OS registra o histórico.",
-        "6. Recusa/expiração libera estoque. Falha após pagamento solicita estorno; reparo já iniciado vai para revisão manual."
+        "6. Expiração sem pagamento libera estoque. Recusa de reparo iniciado leva a OS para revisão manual e permite solicitar estorno."
     ]
     for step in steps:
         y = paragraph(pdf, step, 47, y, width - 94, size=9.5, leading=14) - 6
@@ -251,7 +251,8 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     pdf = canvas.Canvas(str(args.output), pagesize=A4)
     pdf.setTitle("Tech Challenge FIAP - Fase 4" + ("" if complete else " - Rascunho"))
-    pdf.setAuthor("Equipe Tech Challenge")
+    pdf.setAuthor(", ".join(item["name"] for item in participants if item.get("name"))
+                  or "Equipe Tech Challenge")
     draw_first_page(pdf, data, complete)
     draw_second_page(pdf)
     pdf.save()

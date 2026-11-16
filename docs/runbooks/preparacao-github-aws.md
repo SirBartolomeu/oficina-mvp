@@ -25,6 +25,7 @@ Execute na ordem. O assistente prepara Terraform, workflows e extração dos rep
    ```
 
    Não envie o token ao assistente. Se `gh` ou `aws` não forem reconhecidos após a instalação, abra um novo terminal para atualizar o `PATH`. Em 16/11/2026, os binários locais responderam `gh 2.104.0` e `aws-cli/2.40.2`; não havia login GitHub nem perfil AWS configurado.
+5. Execute `./scripts/aws-demo/check-preconditions.ps1` na raiz do projeto. Ele lê apenas CLIs, perfis locais, seis clones e metadados de entrega; retorna código 1 enquanto houver pendências. A checagem não substitui `sts get-caller-identity`, revisão de custo, `terraform plan` ou runs reais do GitHub.
 
 ## 1. Conta, região e orçamento
 

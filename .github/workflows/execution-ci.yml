@@ -33,10 +33,22 @@ jobs:
           done
           docker exec oficina-execution-postgres pg_isready -U postgres -q
           docker exec oficina-execution-postgres psql -U postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE execution_outbox_ci'
+          docker exec oficina-execution-postgres psql -U postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE execution_worker_ci'
+      - name: Start SQS emulator for worker flow
+        run: |
+          docker run --rm -d --name oficina-execution-sqs -p 127.0.0.1:9324:9324 softwaremill/elasticmq-native:latest
+          for attempt in {1..30}; do
+            if curl --silent --output /dev/null http://127.0.0.1:9324; then exit 0; fi
+            sleep 2
+          done
+          docker logs oficina-execution-sqs
+          exit 1
       - name: Execution PostgreSQL concurrency tests
         env:
           EXECUTION_POSTGRES_CONNECTION_STRING: Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Password=local-ci-password
           EXECUTION_OUTBOX_POSTGRES_CONNECTION_STRING: Host=127.0.0.1;Port=5432;Database=execution_outbox_ci;Username=postgres;Password=local-ci-password
+          EXECUTION_WORKER_POSTGRES_CONNECTION_STRING: Host=127.0.0.1;Port=5432;Database=execution_worker_ci;Username=postgres;Password=local-ci-password
+          MESSAGING_SQS_ENDPOINT: http://127.0.0.1:9324
         run: dotnet test services/Oficina.Execution.Postgres.Tests --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory test-results/execution-postgres
       - name: Execution 80% coverage gate
         shell: pwsh

@@ -28,7 +28,7 @@ docker build -f services/Oficina.Execution/Dockerfile -t oficina-execution:local
 kubectl kustomize k8s/services/execution
 ```
 
-Os testes PostgreSQL precisam de `EXECUTION_POSTGRES_CONNECTION_STRING` e `EXECUTION_OUTBOX_POSTGRES_CONNECTION_STRING` apontando para dois databases isolados. O segundo executa o cenário BDD de concorrência da Outbox. O workflow `execution-ci` inicia PostgreSQL, executa as duas suítes, incluindo Gherkin, exige cobertura de 80% e, com OIDC configurado, publica imagem ECR e solicita rollout K3s por SSM.
+Os testes PostgreSQL precisam de `EXECUTION_POSTGRES_CONNECTION_STRING`, `EXECUTION_OUTBOX_POSTGRES_CONNECTION_STRING` e `EXECUTION_WORKER_POSTGRES_CONNECTION_STRING` apontando para três databases isolados; o teste de worker também usa `MESSAGING_SQS_ENDPOINT` (ElasticMQ). O segundo database executa o cenário BDD de concorrência da Outbox. O workflow `execution-ci` inicia PostgreSQL e ElasticMQ, executa as duas suítes, incluindo Gherkin, exige cobertura de 80% sem migrations geradas e, com OIDC configurado, publica imagem ECR e solicita rollout K3s por SSM.
 
 ## Deploy
 

@@ -17,6 +17,7 @@ function Read-ServiceLines([string]$directory) {
     if ($packages.Count -ne 1) { throw "Pacote $AssemblyName ausente ou duplicado em $directory." }
     $lines = @{}
     foreach ($class in @($packages[0].classes.class)) {
+        if ($class.filename -match '(^|[\\/])Migrations[\\/]') { continue }
         foreach ($line in @($class.lines.line)) {
             $key = "$($class.filename):$($line.number)"
             $hit = [int]$line.hits -gt 0

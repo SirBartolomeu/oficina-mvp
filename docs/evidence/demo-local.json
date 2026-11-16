@@ -1,11 +1,14 @@
 {
-  "observedAtUtc": "2026-11-16T20:45:27.3674615Z",
-  "orderId": "06e4f5df-dd37-477d-9822-8b988504ee8b",
-  "traceId": "58218afbfa08b03882b0aeed7a80bea0",
+  "observedAtUtc": "2026-11-16T21:30:24.5295626Z",
+  "orderId": "6b51579c-2eb0-490a-84aa-33ce691c52a6",
+  "traceId": "cab02ea5adf196ccee5fad3d4196d764",
   "orderState": "AwaitingApproval",
   "customerTracking": "passed",
   "sagaTest": "passed_with_simulated_payment_provider",
-  "bddScenario": "Abertura percorre aprovação, reserva, pagamento e execução",
+  "bddScenarios": [
+    "Abertura percorre aprovação, reserva, pagamento e execução",
+    "Recusa da execução atravessa a fila e leva a OS para revisão manual"
+  ],
   "dashboardPanels": 9,
   "alertDemonstrated": false
 }

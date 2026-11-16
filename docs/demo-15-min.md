@@ -8,7 +8,7 @@ Com Docker Desktop aberto, na raiz do repositório:
 ./scripts/demo-fase4.ps1 -SkipBuild
 ```
 
-Na primeira execução ou após mudanças nas imagens, omitir `-SkipBuild`. O comando cria uma OS, verifica o fluxo entre OS, Execução e Billing, autentica um cliente pelo adaptador local da Lambda, consulta o tracking protegido, roda o cenário Gherkin distribuído de abertura até execução e confirma o dashboard. A saída registra os identificadores e URLs; o resumo fica em `docs/evidence/demo-local.json`. Não exibir o token JWT durante a apresentação.
+Na primeira execução ou após mudanças nas imagens, omitir `-SkipBuild`. O comando cria uma OS, verifica o fluxo entre OS, Execução e Billing, autentica um cliente pelo adaptador local da Lambda, consulta o tracking protegido, roda dois cenários Gherkin distribuídos (abertura até execução e recusa com revisão manual) e confirma o dashboard. A saída registra os identificadores e URLs; o resumo fica em `docs/evidence/demo-local.json`. Não exibir o token JWT durante a apresentação.
 
 Se a AWS estiver pronta, execute `bash /opt/oficina-demo/scripts/aws-demo/refresh-demo-credentials.sh` no nó K3s pouco antes de iniciar. Deixe abertos os runs reais de OS, Execução, Billing e Auth e as telas AWS; não gaste a janela de 15 minutos esperando provisionamento.
 

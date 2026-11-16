@@ -72,14 +72,17 @@ for ($attempt = 0; $attempt -lt 30; $attempt++) {
 }
 if (-not $approved) { throw "A OS $($order.id) não chegou a AwaitingApproval." }
 
-Start-Sleep -Seconds 3
-$services = New-Object 'System.Collections.Generic.HashSet[string]'
-$currentService = ''
-foreach ($line in (& docker logs oficina-mvp-otel-collector-1 --since 2m 2>&1)) {
-    if ($line -match '-> service.name: Str\(([^)]+)\)') { $currentService = $Matches[1] }
-    elseif ($line -match "Trace ID\s+:\s+$trace") { [void]$services.Add($currentService) }
-}
 $expected = @('oficina-os', 'oficina-execution', 'oficina-billing')
+$services = New-Object 'System.Collections.Generic.HashSet[string]'
+for ($attempt = 0; $attempt -lt 15; $attempt++) {
+    $currentService = ''
+    foreach ($line in (& docker logs oficina-mvp-otel-collector-1 --since 2m 2>&1)) {
+        if ($line -match '-> service.name: Str\(([^)]+)\)') { $currentService = $Matches[1] }
+        elseif ($line -match "Trace ID\s+:\s+$trace") { [void]$services.Add($currentService) }
+    }
+    if (@($expected | Where-Object { -not $services.Contains($_) }).Count -eq 0) { break }
+    Start-Sleep -Seconds 2
+}
 foreach ($name in $expected) {
     if (-not $services.Contains($name)) { throw "Trace $trace ausente em $name no Collector." }
 }

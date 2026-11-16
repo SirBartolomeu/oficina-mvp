@@ -2,6 +2,16 @@
 
 Estado Terraform separado para EC2/K3s, roles de workloads, OIDC dos serviços/Auth, SSM de deploy, bucket de assets, Lambda CPF e HTTP API. Lê o estado `oficina-data-infra` por `terraform_remote_state`, sem copiar recursos de banco para seu próprio state.
 
+```mermaid
+flowchart LR
+  Data[Estado de dados] --> Remote[terraform_remote_state]
+  Remote --> K3s[EC2 com K3s]
+  Remote --> IAM[Roles dos serviços e OIDC]
+  IAM --> Deploy[Deploy por SSM]
+  Remote --> Auth[Lambda CPF e HTTP API]
+  K3s --> OS[OS, Execução e Billing]
+```
+
 ## Validação local
 
 O ZIP inicial da Lambda deve existir em `infra/aws-k3s/artifacts/oficina-auth.zip` antes do `validate/plan`:

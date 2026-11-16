@@ -2,6 +2,16 @@
 
 Estado Terraform separado para VPC/subnets, RDS PostgreSQL, DynamoDB, SQS/DLQ, ECR e entradas vazias de segredos. O módulo K3s lê somente seus outputs por `terraform_remote_state`; a ordem de criação é **data → K3s** e a remoção é **K3s → data**.
 
+```mermaid
+flowchart LR
+  K3s[Estado K3s] --> Remote[Outputs deste estado]
+  Remote --> VPC[VPC e subnets]
+  Remote --> RDS[RDS: OS e Execução]
+  Remote --> Dynamo[DynamoDB: Billing]
+  Remote --> SQS[SQS e DLQ]
+  Remote --> ECR[ECR dos três serviços]
+```
+
 ## Validação local
 
 ```powershell

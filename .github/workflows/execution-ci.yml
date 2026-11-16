@@ -3,10 +3,9 @@ name: execution-ci
 on:
   push:
     branches: [main]
-    paths: ['services/Oficina.Execution/**', 'services/Oficina.Execution.Tests/**', 'services/Oficina.Execution.Postgres.Tests/**', 'scripts/validate-service-coverage.ps1', 'global.json', '.github/workflows/execution-ci.yml']
+    paths: ['services/Oficina.Execution/**', 'services/Oficina.Execution.Tests/**', 'services/Oficina.Execution.Postgres.Tests/**', 'scripts/validate-service-coverage.ps1', 'k8s/services/execution/**', 'global.json', '.github/workflows/execution-ci.yml']
   pull_request:
     branches: [main]
-    paths: ['services/Oficina.Execution/**', 'services/Oficina.Execution.Tests/**', 'services/Oficina.Execution.Postgres.Tests/**', 'scripts/validate-service-coverage.ps1', 'global.json', '.github/workflows/execution-ci.yml']
   workflow_dispatch:
 
 permissions:

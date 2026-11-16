@@ -3,10 +3,9 @@ name: billing-ci
 on:
   push:
     branches: [main]
-    paths: ['services/Oficina.Billing/**', 'services/Oficina.Billing.Tests/**', 'services/Oficina.Billing.Dynamo.Tests/**', 'scripts/validate-service-coverage.ps1', 'global.json', '.github/workflows/billing-ci.yml']
+    paths: ['services/Oficina.Billing/**', 'services/Oficina.Billing.Tests/**', 'services/Oficina.Billing.Dynamo.Tests/**', 'scripts/validate-service-coverage.ps1', 'k8s/services/billing/**', 'global.json', '.github/workflows/billing-ci.yml']
   pull_request:
     branches: [main]
-    paths: ['services/Oficina.Billing/**', 'services/Oficina.Billing.Tests/**', 'services/Oficina.Billing.Dynamo.Tests/**', 'scripts/validate-service-coverage.ps1', 'global.json', '.github/workflows/billing-ci.yml']
   workflow_dispatch:
 
 permissions:

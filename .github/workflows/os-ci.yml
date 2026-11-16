@@ -3,10 +3,9 @@ name: os-ci
 on:
   push:
     branches: [main]
-    paths: ['src/**', 'tests/OficinaMvp.Domain.Tests/**', 'tests/OficinaMvp.Integration.Tests/**', 'tests/OficinaMvp.Postgres.Tests/**', 'scripts/validate-os-coverage.py', 'global.json', '.github/workflows/os-ci.yml']
+    paths: ['src/**', 'tests/OficinaMvp.Domain.Tests/**', 'tests/OficinaMvp.Integration.Tests/**', 'tests/OficinaMvp.Postgres.Tests/**', 'scripts/validate-os-coverage.py', 'k8s/services/os/**', 'global.json', '.github/workflows/os-ci.yml']
   pull_request:
     branches: [main]
-    paths: ['src/**', 'tests/OficinaMvp.Domain.Tests/**', 'tests/OficinaMvp.Integration.Tests/**', 'tests/OficinaMvp.Postgres.Tests/**', 'scripts/validate-os-coverage.py', 'global.json', '.github/workflows/os-ci.yml']
   workflow_dispatch:
 
 permissions:

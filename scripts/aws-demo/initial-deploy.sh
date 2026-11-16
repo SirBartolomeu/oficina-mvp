@@ -25,8 +25,8 @@ declare -A images
 for service in os execution billing; do
   repository="$(value ecrRepositoryNames "$service")"
   uri="$(value ecrRepositories "$service")"
-  tag="$(aws ecr describe-images --region "$region" --repository-name "$repository" --query 'sort_by(imageDetails,&imagePushedAt)[-1].imageTags[0]' --output text)"
-  if [[ ! "$tag" =~ ^[0-9a-f]{40}$ ]]; then
+  if ! tag="$(aws ecr describe-images --region "$region" --repository-name "$repository" --output json |
+    python3 "$root/scripts/aws-demo/select-ecr-sha.py")"; then
     echo "Imagem ECR com SHA ausente para $service; publique os tres pipelines antes do deploy inicial." >&2
     exit 1
   fi

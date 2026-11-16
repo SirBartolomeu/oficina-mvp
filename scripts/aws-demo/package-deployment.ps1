@@ -42,7 +42,7 @@ try {
         if ([string]::IsNullOrWhiteSpace([string]$config.queueUrls.$queue)) { throw "Output Terraform ausente: queueUrls.$queue" }
     }
     $config | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $stage 'deployment-config.json') -Encoding utf8
-    & tar -czf $absoluteOutput -C $repoRoot k8s/distributed k8s/monitoring scripts/aws-demo/bootstrap-rds-and-app-secrets.sh scripts/aws-demo/prepare-workload-credentials.sh scripts/aws-demo/refresh-demo-credentials.sh scripts/aws-demo/initial-deploy.sh scripts/aws-demo/render-distributed.py scripts/aws-demo/smoke-k3s.sh scripts/aws-demo/verify-flow.py scripts/aws-demo/verify-flow-k3s.sh -C $stage deployment-config.json
+    & tar -czf $absoluteOutput -C $repoRoot k8s/distributed k8s/monitoring scripts/aws-demo/bootstrap-rds-and-app-secrets.sh scripts/aws-demo/prepare-workload-credentials.sh scripts/aws-demo/refresh-demo-credentials.sh scripts/aws-demo/initial-deploy.sh scripts/aws-demo/render-distributed.py scripts/aws-demo/select-ecr-sha.py scripts/aws-demo/smoke-k3s.sh scripts/aws-demo/verify-flow.py scripts/aws-demo/verify-flow-k3s.sh -C $stage deployment-config.json
     if ($LASTEXITCODE -ne 0) { throw 'Falha ao empacotar manifests e scripts.' }
     $hash = (Get-FileHash -Path $absoluteOutput -Algorithm SHA256).Hash.ToLowerInvariant()
     "Pacote: $absoluteOutput"

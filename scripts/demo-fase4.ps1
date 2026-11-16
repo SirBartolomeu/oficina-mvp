@@ -51,9 +51,9 @@ try {
     $env:MESSAGING_SQS_ENDPOINT = 'http://localhost:9324'
     $env:BILLING_DYNAMO_ENDPOINT = 'http://localhost:8000'
     $dotnet = Join-Path $repoRoot '.dotnet_home/sdk10/dotnet.exe'
-    & $dotnet test tests/Oficina.Messaging.Local.Tests/Oficina.Messaging.Local.Tests.csproj --no-restore --nologo -v quiet --filter 'FullyQualifiedName~OpenedOrderMovesThroughApprovalPaymentAndExecution'
-    if ($LASTEXITCODE -ne 0) { throw 'O cenário automatizado da Saga falhou.' }
-    'Saga até execução com pagamento simulado: OK'
+    & $dotnet test tests/Oficina.Messaging.Local.Tests/Oficina.Messaging.Local.Tests.csproj --no-restore --nologo -v quiet --filter 'DisplayName~Abertura percorre'
+    if ($LASTEXITCODE -ne 0) { throw 'O cenário Gherkin distribuído da Saga falhou.' }
+    'BDD Gherkin: Saga até execução com pagamento simulado: OK'
 
     $dashboardReady = $false
     for ($attempt = 0; $attempt -lt 20; $attempt++) {
@@ -80,6 +80,7 @@ try {
         orderState = 'AwaitingApproval'
         customerTracking = 'passed'
         sagaTest = 'passed_with_simulated_payment_provider'
+        bddScenario = 'Abertura percorre aprovação, reserva, pagamento e execução'
         dashboardPanels = 9
         alertDemonstrated = [bool]$IncludeAlert
     }

@@ -21,7 +21,7 @@ Atualizado em 16/11/2026. Estado: **plano acelerado de dois dias em execução**
 
 **Prioridade para nota:** (1) três serviços, bancos separados e Saga/compensação funcionando; (2) três pipelines com testes e imagem, deploy Kubernetes e recursos AWS visíveis; (3) JWT via Lambda, gateway, tracing/métricas; (4) qualidade, BDD, segurança e custo; (5) integração Mercado Pago em sandbox, se credenciais e callback forem viáveis. As Fases 3 e 4 juntas exigem seis repositórios físicos: três serviços, Auth Lambda e duas infraestruturas. Publicação, branch protection e colaborador `soat-architecture` exigem a etapa manual remota. Nunca afirmar requisitos não comprovados.
 
-**Contingência se acesso/autorização AWS não chegar a tempo:** executar `deploy-kind.yml` no GitHub Actions para mostrar CI/CD e Kubernetes reais no runner, `phase4-local.yml` para Saga/BDD, e o demo Docker para APIs/observabilidade. Mostrar Terraform `validate/plan` quando disponível e declarar que AWS não foi aplicado. Isso preserva uma demonstração honesta, embora com lacuna acadêmica.
+**Contingência se acesso/autorização AWS não chegar a tempo:** executar `deploy-kind.yml` no GitHub Actions para mostrar o Kubernetes do **legado OS** no runner, `phase4-local.yml` para Saga/BDD e o demo Docker para os três serviços, APIs e observabilidade. O workflow Kind não implanta os três serviços extraídos nem comprova deploy AWS. Mostrar Terraform `validate/plan` quando disponível e declarar que AWS não foi aplicado. Isso preserva uma demonstração honesta, embora com lacuna acadêmica.
 
 ## Decisão executiva
 

@@ -9,7 +9,9 @@ $ErrorActionPreference = 'Stop'
 
 function Read-ServiceLines([string]$directory) {
     $reports = @(Get-ChildItem -LiteralPath $directory -Recurse -Filter 'coverage.cobertura.xml')
-    if ($reports.Count -ne 1) { throw "Esperado um relatório Cobertura em $directory; encontrados $($reports.Count)." }
+    if ($reports.Count -eq 0) { throw "Nenhum relatório Cobertura em $directory." }
+    $hashes = @($reports | ForEach-Object { (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash } | Select-Object -Unique)
+    if ($hashes.Count -ne 1) { throw "Relatórios Cobertura diferentes em $directory; encontrados $($reports.Count)." }
     [xml]$coverage = Get-Content -LiteralPath $reports[0].FullName
     $packages = @($coverage.coverage.packages.package | Where-Object { $_.name -eq $AssemblyName })
     if ($packages.Count -ne 1) { throw "Pacote $AssemblyName ausente ou duplicado em $directory." }

@@ -2,6 +2,7 @@
 """Union Cobertura reports for the OS service and enforce its line coverage gate."""
 
 import argparse
+import hashlib
 import sys
 import xml.etree.ElementTree as ET
 from collections import defaultdict
@@ -21,8 +22,11 @@ def report_path(value: str) -> Path:
     if path.is_file():
         return path
     reports = list(path.rglob("coverage.cobertura.xml")) if path.is_dir() else []
-    if len(reports) != 1:
-        raise ValueError(f"Esperado um relatório Cobertura em {path}; encontrados {len(reports)}")
+    if not reports:
+        raise ValueError(f"Nenhum relatório Cobertura em {path}")
+    hashes = {hashlib.sha256(report.read_bytes()).digest() for report in reports}
+    if len(hashes) != 1:
+        raise ValueError(f"Relatórios Cobertura diferentes em {path}; encontrados {len(reports)}")
     return reports[0]
 
 

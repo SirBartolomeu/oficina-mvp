@@ -30,11 +30,14 @@ Acesse [Swagger local](http://localhost:8080/swagger) e [healthcheck](http://loc
 
 ```powershell
 dotnet test services/Oficina.Billing.Tests -c Release
+$env:BILLING_DYNAMO_ENDPOINT = 'http://localhost:8000'
+$env:MESSAGING_SQS_ENDPOINT = 'http://localhost:9324'
+dotnet test services/Oficina.Billing.Dynamo.Tests -c Release
 docker build -f services/Oficina.Billing/Dockerfile -t oficina-billing:local .
 kubectl kustomize k8s/services/billing
 ```
 
-Os testes de integração usam DynamoDB Local e ElasticMQ com `BILLING_DYNAMO_ENDPOINT` e `MESSAGING_SQS_ENDPOINT`. O workflow `billing-ci` inicia esses emuladores, executa as duas suítes, exige cobertura de 80% e, com OIDC configurado, publica imagem ECR e solicita rollout K3s por SSM.
+Para a suíte de integração, inicie também ElasticMQ na porta 9324 em outro terminal (`docker run --rm -p 9324:9324 softwaremill/elasticmq-native:latest`). Os testes usam `BILLING_DYNAMO_ENDPOINT` e `MESSAGING_SQS_ENDPOINT`. `RefundReconciliation.feature` executa dois cenários Gherkin de estorno com provedor HTTP simulado; a suíte de integração passou 17/17 localmente. O workflow `billing-ci` inicia os emuladores, executa as duas suítes, exige cobertura de 80% e, com OIDC configurado, publica imagem ECR e solicita rollout K3s por SSM.
 
 ## Deploy
 

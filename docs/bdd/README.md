@@ -6,6 +6,8 @@ O projeto [Oficina.Saga.Bdd.Tests](../../tests/Oficina.Saga.Bdd.Tests) executa, 
 
 O projeto [Oficina.Messaging.Local.Tests](../../tests/Oficina.Messaging.Local.Tests) também executa oito casos em `SagaDistributed.feature`: abertura até execução, estorno Billing/OS, compensação por pagamento `expired`/`canceled`, confirmação antes da reserva com reentrega e DLQ de OS/Billing/Execução. Os passos acionam os testes de integração existentes como fluxos de caixa preta; as verificações detalhadas de estado, mensagens e idempotência permanecem nesses testes. A suíte inteira passou 21/21 em 16/11 com ElasticMQ e DynamoDB Local, incluindo os oito casos Gherkin. Isso ainda não cobre todos os cenários de `saga-fase4.feature` nem a AWS real.
 
+O Billing independente executa dois casos em `services/Oficina.Billing.Dynamo.Tests/RefundReconciliation.feature`: POST conclusivo ou ambíguo, sem repetição do pedido, seguido de confirmação por GET e publicação de `RefundConfirmed`. Os passos reutilizam o teste de integração com provedor HTTP simulado. O clone Billing passou 17/17 com DynamoDB Local, incluindo os dois casos Gherkin; Mercado Pago real permanece pendente.
+
 ```powershell
 .\.dotnet_home\sdk10\dotnet.exe test tests/Oficina.Saga.Bdd.Tests --configuration Release
 $env:MESSAGING_SQS_ENDPOINT='http://localhost:9324'

@@ -4,8 +4,13 @@ Os cenários em [saga-fase4.feature](saga-fase4.feature) descrevem comportamento
 
 O projeto [Oficina.Saga.Bdd.Tests](../../tests/Oficina.Saga.Bdd.Tests) executa, com Reqnroll/xUnit, quatro casos Gherkin das transições centrais da OS: aprovação antes da reserva, liberação após `expired`/`canceled` e revisão/estorno depois da recusa. São testes reais do domínio, sem emuladores. As integrações entre serviços, outbox/inbox, duplicatas e DLQ continuam validadas pelos testes de integração abaixo; não afirmar que os quatro casos de domínio cobrem toda a Saga distribuída.
 
+O projeto [Oficina.Messaging.Local.Tests](../../tests/Oficina.Messaging.Local.Tests) também executa cinco casos em `SagaDistributed.feature`: abertura até execução, estorno cruzando Billing/OS e DLQ de OS/Billing/Execução. Os passos acionam os testes de integração existentes como fluxos de caixa preta; as verificações detalhadas de estado, mensagens e idempotência permanecem nesses testes. A suíte inteira passou 18/18 em 16/11 com ElasticMQ e DynamoDB Local, incluindo os cinco casos Gherkin. Isso ainda não cobre todos os cenários de `saga-fase4.feature` nem a AWS real.
+
 ```powershell
 .\.dotnet_home\sdk10\dotnet.exe test tests/Oficina.Saga.Bdd.Tests --configuration Release
+$env:MESSAGING_SQS_ENDPOINT='http://localhost:9324'
+$env:BILLING_DYNAMO_ENDPOINT='http://localhost:8000'
+.\.dotnet_home\sdk10\dotnet.exe test tests/Oficina.Messaging.Local.Tests --configuration Release
 ```
 
 | Cenário | Testes executáveis existentes | Situação |

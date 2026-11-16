@@ -8,7 +8,7 @@ Atualizado em 16/11/2026. Estado: **plano acelerado de dois dias em execução**
 
 | Ordem / prazo alvo | Responsável | Ação e como verificar |
 |---|---|---|
-| 1. Preparado localmente | Assistente | Workflows próprios para OS, Execução, Billing e Auth; três imagens Docker e ZIP Lambda construídos. Além das suítes unitárias, os testes de integração nos clones passaram: OS PostgreSQL 1/1, Execução PostgreSQL 3/3 e Billing DynamoDB 13/13. Execução remota dos workflows ainda pendente. |
+| 1. Preparado localmente | Assistente | Workflows próprios para OS, Execução, Billing, Auth e duas infraestruturas; três imagens Docker, ZIP Lambda, seis clones e manifests por serviço preparados. Testes e gates locais passaram; execução remota dos workflows ainda pendente. |
 | 2. Dia 1, 1–2 h | Usuário | Confirmar conta/região AWS, limite de gasto, acesso GitHub e autorizar explicitamente publicação dos repositórios e criação dos recursos pagos. Criar AWS Budget com alerta baixo antes de `apply`; enviar apenas IDs/nomes, nunca credenciais no chat ou Git. |
 | 3. Terraform preparado | Assistente | EC2/K3s de um nó, ECR, RDS PostgreSQL com dois bancos, DynamoDB, SQS/DLQ, IAM/OIDC, Lambda e segredos. Dados e K3s têm estados separados; `fmt` e `validate` passaram em ambos. `plan` real e revisão de custo aguardam conta, região, bucket e owner GitHub. |
 | 4. Extração local pronta | Usuário + assistente | Seis clones preservam histórico, branch `main` e workflow próprio. Publicar após autorização, ativar Actions e branch protection; confirmar runs remotos dos três serviços, Auth e duas infraestruturas. |

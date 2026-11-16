@@ -21,8 +21,8 @@ $sourceCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
 $shared = @('.gitattributes', '.gitignore', '.dockerignore', 'global.json', 'NuGet.config', 'LICENSE', 'docs/architecture-phase4.md')
 $services = [ordered]@{
     'oficina-os' = @('src', 'tests/OficinaMvp.Domain.Tests', 'tests/OficinaMvp.Integration.Tests', 'tests/OficinaMvp.Postgres.Tests', 'services/Oficina.Auth', 'services/Oficina.Auth.Tests', 'scripts/validate-os-coverage.py', 'k8s/services/os', '.github/workflows/os-ci.yml')
-    'oficina-execution' = @('services/Oficina.Execution', 'services/Oficina.Execution.Tests', 'services/Oficina.Execution.Postgres.Tests', 'k8s/services/execution', '.github/workflows/execution-ci.yml')
-    'oficina-billing' = @('services/Oficina.Billing', 'services/Oficina.Billing.Tests', 'services/Oficina.Billing.Dynamo.Tests', 'docs/runbooks/refund-reconciliation.md', 'k8s/services/billing', '.github/workflows/billing-ci.yml')
+    'oficina-execution' = @('services/Oficina.Execution', 'services/Oficina.Execution.Tests', 'services/Oficina.Execution.Postgres.Tests', 'scripts/validate-service-coverage.ps1', 'k8s/services/execution', '.github/workflows/execution-ci.yml')
+    'oficina-billing' = @('services/Oficina.Billing', 'services/Oficina.Billing.Tests', 'services/Oficina.Billing.Dynamo.Tests', 'docs/runbooks/refund-reconciliation.md', 'scripts/validate-service-coverage.ps1', 'k8s/services/billing', '.github/workflows/billing-ci.yml')
     'oficina-auth-lambda' = @('services/Oficina.Auth', 'services/Oficina.Auth.Tests', 'scripts/aws-demo/build-auth-lambda.ps1', '.github/workflows/auth-ci.yml')
 }
 

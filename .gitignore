@@ -17,6 +17,7 @@ coverage.cobertura.xml
 # Python artifacts
 **/__pycache__/
 *.pyc
+**/*.feature.cs
 
 # Security report probes/temp artifacts
 security-report/raw/semgrep.manual.json

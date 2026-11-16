@@ -1,6 +1,12 @@
 # Evidência BDD local
 
-Os cenários em [saga-fase4.feature](saga-fase4.feature) descrevem comportamentos observáveis. A execução automatizada atual usa xUnit, sem interpretador Gherkin; por isso o arquivo `.feature` é especificação rastreável, não um teste executável por si só.
+Os cenários em [saga-fase4.feature](saga-fase4.feature) descrevem comportamentos observáveis da integração entre serviços. Esse arquivo ainda é uma especificação rastreável, não é executado diretamente.
+
+O projeto [Oficina.Saga.Bdd.Tests](../../tests/Oficina.Saga.Bdd.Tests) executa, com Reqnroll/xUnit, quatro casos Gherkin das transições centrais da OS: aprovação antes da reserva, liberação após `expired`/`canceled` e revisão/estorno depois da recusa. São testes reais do domínio, sem emuladores. As integrações entre serviços, outbox/inbox, duplicatas e DLQ continuam validadas pelos testes de integração abaixo; não afirmar que os quatro casos de domínio cobrem toda a Saga distribuída.
+
+```powershell
+.\.dotnet_home\sdk10\dotnet.exe test tests/Oficina.Saga.Bdd.Tests --configuration Release
+```
 
 | Cenário | Testes executáveis existentes | Situação |
 |---|---|---|
@@ -30,4 +36,4 @@ $env:OS_POSTGRES_CONNECTION_STRING='Host=localhost;Port=5433;Database=oficina_ex
 
 O teste PostgreSQL aplica as migrations no schema isolado antes de disputar a linha da Outbox. O workflow [phase4-local.yml](../../.github/workflows/phase4-local.yml) prepara ElasticMQ, DynamoDB Local e PostgreSQL em um runner hospedado pelo GitHub, executa Billing/Execução/Saga/concorrência e publica arquivos TRX. O Compose combinado e o teste passaram localmente, mas ainda não há execução remota nem relatório de CI.
 
-Antes de marcar BDD como completo, ampliar duplicatas e falhas para os demais caminhos e gerar evidência de execução no CI. O arquivo `.feature` ainda precisa de um runner Gherkin se a avaliação exigir execução direta da especificação. Testes com Mercado Pago real dependem de credenciais de testes.
+Antes de marcar BDD como completo, ampliar as especificações executáveis para os demais caminhos de integração, gerar evidência de execução no CI e confirmar se a avaliação exige que todo `saga-fase4.feature` seja executado diretamente. Testes com Mercado Pago real dependem de credenciais de testes.

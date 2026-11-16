@@ -62,6 +62,9 @@ jobs:
       - name: Saga and BDD scenarios
         run: dotnet test tests/Oficina.Messaging.Local.Tests --configuration Release --logger trx --results-directory test-results/saga
 
+      - name: Executable Gherkin BDD transitions
+        run: dotnet test tests/Oficina.Saga.Bdd.Tests --configuration Release --logger trx --results-directory test-results/bdd
+
       - name: OS PostgreSQL concurrency test
         run: dotnet test tests/OficinaMvp.Postgres.Tests --configuration Release --logger trx --results-directory test-results/os-postgres
 

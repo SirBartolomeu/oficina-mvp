@@ -28,6 +28,11 @@ public sealed class SagaDistributedSteps
     public async Task WhenRefundFlows() =>
         await RunAsync(() => new RefundFlowTests().RefundRequestCrossesQueuesAndConfirmationCancelsOrder());
 
+    [When("a Execução recusa um reparo já iniciado")]
+    public async Task WhenExecutionRejectsRepair() =>
+        await RunAsync(() => new ExecutionRejectionFlowTests()
+            .RejectedRepairCrossesQueueAndMovesOrderToManualReviewOnce());
+
     [When("um pagamento sem valor recebido termina como (.*)")]
     public async Task WhenPaymentRejected(string state) =>
         await RunAsync(() => new StockReservationFlowTests()

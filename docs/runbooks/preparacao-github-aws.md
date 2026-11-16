@@ -16,6 +16,15 @@ Execute na ordem. O assistente prepara Terraform, workflows e extração dos rep
 
    [Guia oficial do SSO no CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html). Se a conta não usa Identity Center, use o perfil temporário aprovado pelo administrador e execute os dois últimos comandos com o nome desse perfil. Não copie access keys para o chat, Terraform ou GitHub Actions. O retorno de `get-caller-identity` pode ser compartilhado: contém ID da conta e ARN, sem segredo.
 3. Confirme que o ID retornado é a conta da apresentação. Execute `terraform version` e `git --version`; o ZIP da Auth usa .NET 10. Mantenha o mesmo `$env:AWS_PROFILE` no terminal que executará `terraform init/plan/apply` e os comandos `aws s3`. Se a sessão expirar, repita `aws sso login --profile oficina-demo`.
+4. O GitHub CLI está instalado nesta máquina. Em um novo PowerShell, faça login interativo na sua conta e confirme o owner antes de publicar:
+
+   ```powershell
+   gh auth login --web --hostname github.com --git-protocol https
+   gh auth status
+   gh api user --jq .login
+   ```
+
+   Não envie o token ao assistente. Se `gh` ou `aws` não forem reconhecidos após a instalação, abra um novo terminal para atualizar o `PATH`. Em 16/11/2026, os binários locais responderam `gh 2.104.0` e `aws-cli/2.40.2`; não havia login GitHub nem perfil AWS configurado.
 
 ## 1. Conta, região e orçamento
 

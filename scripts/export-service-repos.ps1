@@ -18,11 +18,11 @@ $branch = (& git -C $repoRoot branch --show-current).Trim()
 if ($LASTEXITCODE -ne 0 -or -not $branch) { throw 'A origem precisa estar em uma branch nomeada.' }
 $sourceCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
 
-$shared = @('.gitattributes', '.gitignore', '.dockerignore', 'global.json', 'NuGet.config', 'LICENSE')
+$shared = @('.gitattributes', '.gitignore', '.dockerignore', 'global.json', 'NuGet.config', 'LICENSE', 'docs/architecture-phase4.md')
 $services = [ordered]@{
-    'oficina-os' = @('src', 'tests/OficinaMvp.Domain.Tests', 'tests/OficinaMvp.Integration.Tests', 'tests/OficinaMvp.Postgres.Tests', 'services/Oficina.Auth', 'services/Oficina.Auth.Tests', 'scripts/validate-os-coverage.py', '.github/workflows/os-ci.yml')
-    'oficina-execution' = @('services/Oficina.Execution', 'services/Oficina.Execution.Tests', 'services/Oficina.Execution.Postgres.Tests', '.github/workflows/execution-ci.yml')
-    'oficina-billing' = @('services/Oficina.Billing', 'services/Oficina.Billing.Tests', 'services/Oficina.Billing.Dynamo.Tests', 'docs/runbooks/refund-reconciliation.md', '.github/workflows/billing-ci.yml')
+    'oficina-os' = @('src', 'tests/OficinaMvp.Domain.Tests', 'tests/OficinaMvp.Integration.Tests', 'tests/OficinaMvp.Postgres.Tests', 'services/Oficina.Auth', 'services/Oficina.Auth.Tests', 'scripts/validate-os-coverage.py', 'k8s/services/os', '.github/workflows/os-ci.yml')
+    'oficina-execution' = @('services/Oficina.Execution', 'services/Oficina.Execution.Tests', 'services/Oficina.Execution.Postgres.Tests', 'k8s/services/execution', '.github/workflows/execution-ci.yml')
+    'oficina-billing' = @('services/Oficina.Billing', 'services/Oficina.Billing.Tests', 'services/Oficina.Billing.Dynamo.Tests', 'docs/runbooks/refund-reconciliation.md', 'k8s/services/billing', '.github/workflows/billing-ci.yml')
     'oficina-auth-lambda' = @('services/Oficina.Auth', 'services/Oficina.Auth.Tests', 'scripts/aws-demo/build-auth-lambda.ps1', '.github/workflows/auth-ci.yml')
 }
 
@@ -43,36 +43,8 @@ foreach ($service in $SelectedServices) {
     & git -C $target restore --source=HEAD --staged --worktree -- $keep
     if ($LASTEXITCODE -ne 0) { throw "Falha ao restaurar os arquivos de $service." }
 
-    $description = switch ($service) {
-        'oficina-os' { 'API de ordens de serviço e orquestração da Saga.' }
-        'oficina-execution' { 'Catálogo, estoque e execução de reparos.' }
-        'oficina-billing' { 'Orçamentos e pagamentos em DynamoDB.' }
-        'oficina-auth-lambda' { 'Autenticação serverless de clientes por CPF e JWT.' }
-    }
-    $testProject = switch ($service) {
-        'oficina-os' { 'tests/OficinaMvp.Integration.Tests' }
-        'oficina-execution' { 'services/Oficina.Execution.Tests' }
-        'oficina-billing' { 'services/Oficina.Billing.Tests' }
-        'oficina-auth-lambda' { 'services/Oficina.Auth.Tests' }
-    }
-    @(
-        "# $service",
-        '',
-        $description,
-        '',
-        'Este repositório foi extraído do histórico Git do projeto `oficina-mvp`.',
-        ("Commit de origem: " + $sourceCommit + "."),
-        '',
-        '```powershell',
-        "dotnet test $testProject --configuration Release",
-        '```',
-        '',
-        $(if ($service -eq 'oficina-auth-lambda') {
-            'O workflow em `.github/workflows` testa e empacota a Function; após configurar OIDC, atualiza o código da Lambda na AWS.'
-        } else {
-            'O workflow em `.github/workflows` executa testes, publica a imagem no ECR por OIDC e aciona o deploy K3s por SSM quando as variáveis GitHub estiverem configuradas.'
-        })
-    ) | Set-Content -LiteralPath (Join-Path $target 'README.md') -Encoding utf8
+    Copy-Item -LiteralPath (Join-Path $repoRoot "docs/repo-readmes/$service.md") -Destination (Join-Path $target 'README.md') -Force
+    Add-Content -LiteralPath (Join-Path $target 'README.md') -Value "`nExtraído do commit $sourceCommit do projeto oficina-mvp, preservando o histórico Git. Sem remote configurado."
 
     & git -C $target add -A
     if ($LASTEXITCODE -ne 0) { throw "Falha ao preparar o commit de $service." }

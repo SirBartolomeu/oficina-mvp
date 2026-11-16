@@ -1,10 +1,11 @@
 {
-  "observedAtUtc": "2026-11-15T12:57:46.1298301Z",
-  "orderId": "c3f623e5-185c-4db2-925b-db07cfa9a5a1",
-  "traceId": "63079e13bcb33d26b63308e08a03a099",
+  "observedAtUtc": "2026-11-16T20:45:27.3674615Z",
+  "orderId": "06e4f5df-dd37-477d-9822-8b988504ee8b",
+  "traceId": "58218afbfa08b03882b0aeed7a80bea0",
   "orderState": "AwaitingApproval",
   "customerTracking": "passed",
   "sagaTest": "passed_with_simulated_payment_provider",
+  "bddScenario": "Abertura percorre aprovação, reserva, pagamento e execução",
   "dashboardPanels": 9,
   "alertDemonstrated": false
 }

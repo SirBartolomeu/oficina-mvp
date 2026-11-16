@@ -1,3 +1,4 @@
+using OficinaMvp.Domain.Entities;
 using Reqnroll;
 using Xunit;
 
@@ -26,6 +27,17 @@ public sealed class SagaDistributedSteps
     [When("um pedido de estorno é processado pelos serviços")]
     public async Task WhenRefundFlows() =>
         await RunAsync(() => new RefundFlowTests().RefundRequestCrossesQueuesAndConfirmationCancelsOrder());
+
+    [When("um pagamento sem valor recebido termina como (.*)")]
+    public async Task WhenPaymentRejected(string state) =>
+        await RunAsync(() => new StockReservationFlowTests()
+            .ReservationResultUpdatesOrderWithoutOverselling(
+                2, 3, WorkOrderProcessState.AwaitingPayment, false, state));
+
+    [When("a confirmação de pagamento chega antes da reserva e é reentregue")]
+    public async Task WhenPaymentArrivesEarly() =>
+        await RunAsync(() => new OutOfOrderPaymentTests()
+            .PaymentConfirmationRetriesAfterStockReservationArrives());
 
     [When("(.*) recebe uma mensagem inválida repetidamente")]
     public async Task WhenInvalidMessageReceived(string service) =>

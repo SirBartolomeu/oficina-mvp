@@ -76,6 +76,7 @@ jobs:
           path: |
             infra/aws-k3s/plan.tfplan
             infra/aws-k3s/plan.txt
+            infra/aws-k3s/artifacts/oficina-auth.zip
           retention-days: 1
 
   deploy:
@@ -93,6 +94,8 @@ jobs:
         with:
           name: k3s-plan
           path: infra/aws-k3s
+      - name: Verify planned Auth package
+        run: test -s infra/aws-k3s/artifacts/oficina-auth.zip
       - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN_INFRA_K3S }}

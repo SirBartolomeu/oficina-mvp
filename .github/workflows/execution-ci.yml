@@ -1,0 +1,111 @@
+name: execution-ci
+
+on:
+  push:
+    branches: [main]
+    paths: ['services/Oficina.Execution/**', 'services/Oficina.Execution.Tests/**', 'services/Oficina.Execution.Postgres.Tests/**', 'scripts/validate-service-coverage.ps1', 'k8s/services/execution/**', 'global.json', '.github/workflows/execution-ci.yml']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Execution tests
+        run: dotnet test services/Oficina.Execution.Tests --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory test-results/execution
+      - name: Start PostgreSQL for concurrency tests
+        run: |
+          docker run --rm -d --name oficina-execution-postgres -e POSTGRES_PASSWORD=local-ci-password -p 127.0.0.1:5432:5432 postgres:16-alpine
+          for attempt in {1..30}; do
+            if docker exec oficina-execution-postgres pg_isready -U postgres -q; then break; fi
+            sleep 2
+          done
+          docker exec oficina-execution-postgres pg_isready -U postgres -q
+          docker exec oficina-execution-postgres psql -U postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE execution_outbox_ci'
+          docker exec oficina-execution-postgres psql -U postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE execution_worker_ci'
+      - name: Start SQS emulator for worker flow
+        run: |
+          docker run --rm -d --name oficina-execution-sqs -p 127.0.0.1:9324:9324 softwaremill/elasticmq-native:latest
+          for attempt in {1..30}; do
+            if curl --silent --output /dev/null http://127.0.0.1:9324; then exit 0; fi
+            sleep 2
+          done
+          docker logs oficina-execution-sqs
+          exit 1
+      - name: Execution PostgreSQL concurrency tests
+        env:
+          EXECUTION_POSTGRES_CONNECTION_STRING: Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Password=local-ci-password
+          EXECUTION_OUTBOX_POSTGRES_CONNECTION_STRING: Host=127.0.0.1;Port=5432;Database=execution_outbox_ci;Username=postgres;Password=local-ci-password
+          EXECUTION_WORKER_POSTGRES_CONNECTION_STRING: Host=127.0.0.1;Port=5432;Database=execution_worker_ci;Username=postgres;Password=local-ci-password
+          MESSAGING_SQS_ENDPOINT: http://127.0.0.1:9324
+        run: dotnet test services/Oficina.Execution.Postgres.Tests --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory test-results/execution-postgres
+      - name: Execution 80% coverage gate
+        shell: pwsh
+        run: ./scripts/validate-service-coverage.ps1 -AssemblyName Oficina.Execution -UnitResultsDirectory test-results/execution -IntegrationResultsDirectory test-results/execution-postgres -Minimum 80
+      - name: Build Execution container
+        run: docker build -f services/Oficina.Execution/Dockerfile -t oficina-execution:${{ github.sha }} .
+      - name: ECR publication pending configuration
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && (vars.AWS_REGION == '' || vars.AWS_ROLE_ARN_EXECUTION == '' || vars.ECR_REPOSITORY_EXECUTION == '')
+        run: echo '::warning::ECR publication skipped; configure AWS_REGION, AWS_ROLE_ARN_EXECUTION and ECR_REPOSITORY_EXECUTION.'
+      - name: Configure AWS credentials for ECR
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.AWS_REGION != '' && vars.AWS_ROLE_ARN_EXECUTION != '' && vars.ECR_REPOSITORY_EXECUTION != ''
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN_EXECUTION }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Login to ECR
+        id: ecr-login
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.AWS_REGION != '' && vars.AWS_ROLE_ARN_EXECUTION != '' && vars.ECR_REPOSITORY_EXECUTION != ''
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Push Execution image to ECR
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.AWS_REGION != '' && vars.AWS_ROLE_ARN_EXECUTION != '' && vars.ECR_REPOSITORY_EXECUTION != ''
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/${{ vars.ECR_REPOSITORY_EXECUTION }}:${{ github.sha }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY_EXECUTION }}
+        run: |
+          if aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids "imageTag=$GITHUB_SHA" >/dev/null 2>&1; then
+            echo 'Image already exists in immutable ECR repository.'
+          else
+            docker tag oficina-execution:${{ github.sha }} "$IMAGE_URI"
+            docker push "$IMAGE_URI"
+          fi
+      - name: K3s deploy pending configuration
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && (vars.SSM_DOCUMENT_EXECUTION == '' || vars.K3S_INSTANCE_ID == '')
+        run: echo '::warning::K3s deploy skipped; configure SSM_DOCUMENT_EXECUTION and K3S_INSTANCE_ID.'
+      - name: Deploy Execution in K3s through SSM
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.AWS_REGION != '' && vars.AWS_ROLE_ARN_EXECUTION != '' && vars.ECR_REPOSITORY_EXECUTION != '' && vars.SSM_DOCUMENT_EXECUTION != '' && vars.K3S_INSTANCE_ID != ''
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          SSM_DOCUMENT: ${{ vars.SSM_DOCUMENT_EXECUTION }}
+          K3S_INSTANCE_ID: ${{ vars.K3S_INSTANCE_ID }}
+        run: |
+          set -euo pipefail
+          command_id="$(aws ssm send-command --document-name "$SSM_DOCUMENT" --instance-ids "$K3S_INSTANCE_ID" --parameters "imageTag=$GITHUB_SHA" --query 'Command.CommandId' --output text)"
+          status=Pending
+          for attempt in {1..84}; do
+            status="$(aws ssm get-command-invocation --command-id "$command_id" --instance-id "$K3S_INSTANCE_ID" --query Status --output text 2>/dev/null || true)"
+            case "$status" in Success) break;; Failed|Cancelled|TimedOut) break;; esac
+            sleep 5
+          done
+          aws ssm get-command-invocation --command-id "$command_id" --instance-id "$K3S_INSTANCE_ID" --query '{Status:Status,Output:StandardOutputContent}'
+          test "$status" = Success
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: execution-test-results
+          path: |
+            test-results/**/*.trx
+            test-results/**/coverage.cobertura.xml
+          if-no-files-found: ignore

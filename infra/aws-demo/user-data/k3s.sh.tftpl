@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+systemctl enable --now amazon-ssm-agent
+curl --fail --silent --show-error --location https://get.k3s.io --output /tmp/install-k3s.sh
+chmod 700 /tmp/install-k3s.sh
+INSTALL_K3S_VERSION='${k3s_version}' /tmp/install-k3s.sh server --write-kubeconfig-mode 600 --secrets-encryption
+systemctl is-active --quiet k3s
+/usr/local/bin/k3s kubectl get nodes

@@ -6,7 +6,7 @@ using OficinaMvp.Application.Services;
 namespace OficinaMvp.Api.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Policy = "Admin")]
 [Route("api/work-orders")]
 public sealed class WorkOrdersController : ControllerBase
 {
@@ -60,6 +60,16 @@ public sealed class WorkOrdersController : ControllerBase
     [HttpPost("{id:guid}/finalize")]
     public Task<ActionResult<WorkOrderDetailResponse>> FinalizeWork(Guid id, CancellationToken cancellationToken) =>
         ApplyTransition(id, WorkOrderAction.Finalize, cancellationToken);
+
+    [HttpPost("{id:guid}/request-refund")]
+    [Authorize(Policy = "Admin")]
+    public async Task<ActionResult<WorkOrderDetailResponse>> RequestRefund(Guid id,
+        [FromBody] RefundDecisionRequest request, CancellationToken cancellationToken)
+    {
+        var workOrder = await _workOrderService.RequestRefundAsync(id, request.Reason,
+            cancellationToken);
+        return Ok(workOrder.ToDetailResponse());
+    }
 
     [HttpPost("{id:guid}/deliver")]
     public Task<ActionResult<WorkOrderDetailResponse>> Deliver(Guid id, CancellationToken cancellationToken) =>

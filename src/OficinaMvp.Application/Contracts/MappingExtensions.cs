@@ -5,7 +5,7 @@ namespace OficinaMvp.Application.Contracts;
 public static class MappingExtensions
 {
     public static CustomerResponse ToResponse(this Customer customer) =>
-        new(customer.Id, customer.Name, customer.Document, customer.Phone, customer.Email);
+        new(customer.Id, customer.Name, customer.Document, customer.Phone, customer.Email, customer.IsActive);
 
     public static VehicleResponse ToResponse(this Vehicle vehicle) =>
         new(vehicle.Id, vehicle.CustomerId, vehicle.LicensePlate, vehicle.Brand, vehicle.Model, vehicle.Year);
@@ -17,7 +17,10 @@ public static class MappingExtensions
         new(part.Id, part.Name, part.UnitPrice, part.StockQuantity);
 
     public static WorkOrderSummaryResponse ToSummaryResponse(this WorkOrder workOrder) =>
-        new(workOrder.Id, workOrder.Status, workOrder.BudgetTotal, workOrder.CreatedAtUtc, workOrder.UpdatedAtUtc);
+        new(workOrder.Id, workOrder.Status, workOrder.BudgetTotal, workOrder.CreatedAtUtc, workOrder.UpdatedAtUtc)
+        {
+            BranchId = workOrder.BranchId
+        };
 
     public static WorkOrderStatusResponse ToStatusResponse(this WorkOrder workOrder) =>
         new(
@@ -30,7 +33,10 @@ public static class MappingExtensions
             workOrder.ApprovedAtUtc,
             workOrder.ExecutionStartedAtUtc,
             workOrder.FinalizedAtUtc,
-            workOrder.DeliveredAtUtc);
+            workOrder.DeliveredAtUtc)
+        {
+            ProcessState = workOrder.ProcessState
+        };
 
     public static WorkOrderDetailResponse ToDetailResponse(this WorkOrder workOrder) =>
         new(
@@ -66,12 +72,15 @@ public static class MappingExtensions
                     history.Status,
                     history.ChangedAtUtc,
                     history.Note))
-                .ToList());
+                .ToList())
+        {
+            BranchId = workOrder.BranchId,
+            ProcessState = workOrder.ProcessState
+        };
 
-    public static ClientTrackingResponse ToClientTrackingResponse(this WorkOrder workOrder, string customerDocument) =>
+    public static ClientTrackingResponse ToClientTrackingResponse(this WorkOrder workOrder) =>
         new(
             workOrder.Id,
-            customerDocument,
             workOrder.Status,
             workOrder.CreatedAtUtc,
             workOrder.UpdatedAtUtc,

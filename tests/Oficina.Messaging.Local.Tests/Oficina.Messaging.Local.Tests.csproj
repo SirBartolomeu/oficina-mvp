@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.1" />
+    <PackageReference Include="Reqnroll.xUnit" Version="3.3.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/OficinaMvp.Infrastructure/OficinaMvp.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/OficinaMvp.Api/OficinaMvp.Api.csproj" />
+    <ProjectReference Include="../../services/Oficina.Billing/Oficina.Billing.csproj" />
+    <ProjectReference Include="../../services/Oficina.Execution/Oficina.Execution.csproj">
+      <Aliases>execution</Aliases>
+    </ProjectReference>
+  </ItemGroup>
+</Project>

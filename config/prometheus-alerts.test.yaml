@@ -1,0 +1,30 @@
+rule_files:
+  - prometheus-alerts.yaml
+
+evaluation_interval: 10s
+
+tests:
+  - interval: 10s
+    input_series:
+      - series: 'probe_success{job="oficina-health",instance="http://billing-api:8080/health/ready"}'
+        values: '1 1 0 0 0 0 0 0'
+      - series: 'sqs_message_failures_total{service_name="oficina-billing"}'
+        values: '0 0 0 1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: OficinaServiceUnavailable
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: oficina-health
+              instance: http://billing-api:8080/health/ready
+            exp_annotations:
+              summary: 'Serviço indisponível: http://billing-api:8080/health/ready'
+      - eval_time: 1m
+        alertname: OficinaSqsProcessingFailures
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              service_name: oficina-billing
+            exp_annotations:
+              summary: 'Falhas de consumo SQS em oficina-billing'

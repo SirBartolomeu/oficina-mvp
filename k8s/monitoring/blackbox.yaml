@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blackbox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blackbox
+  template:
+    metadata:
+      labels:
+        app: blackbox
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: blackbox
+          image: prom/blackbox-exporter:v0.28.0
+          args: ["--config.file=/etc/blackbox/config.yml"]
+          ports:
+            - name: http
+              containerPort: 9115
+          volumeMounts:
+            - name: config
+              mountPath: /etc/blackbox/config.yml
+              subPath: config.yml
+              readOnly: true
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: config
+          configMap:
+            name: blackbox-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blackbox
+spec:
+  type: ClusterIP
+  selector:
+    app: blackbox
+  ports:
+    - name: http
+      port: 9115
+      targetPort: http

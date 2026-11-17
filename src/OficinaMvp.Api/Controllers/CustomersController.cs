@@ -6,7 +6,7 @@ using OficinaMvp.Application.Services;
 namespace OficinaMvp.Api.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Policy = "Admin")]
 [Route("api/customers")]
 public sealed class CustomersController : ControllerBase
 {
@@ -48,7 +48,7 @@ public sealed class CustomersController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var deleted = await _catalogService.DeleteCustomerAsync(id, cancellationToken);
-        return deleted ? NoContent() : NotFound();
+        var deactivated = await _catalogService.DeactivateCustomerAsync(id, cancellationToken);
+        return deactivated ? NoContent() : NotFound();
     }
 }

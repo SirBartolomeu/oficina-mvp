@@ -3,12 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 using OficinaMvp.Application.Contracts;
 using OficinaMvp.Application.Ports;
 using OficinaMvp.Application.Services;
-using OficinaMvp.Domain.Validation;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace OficinaMvp.Api.Controllers;
 
 [ApiController]
-[AllowAnonymous]
+[Authorize(Roles = "Customer")]
 [Route("api/client/work-orders")]
 public sealed class ClientTrackingController : ControllerBase
 {
@@ -22,22 +23,25 @@ public sealed class ClientTrackingController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<ClientTrackingResponse>> Track(Guid id, [FromQuery] string document, CancellationToken cancellationToken)
+    public async Task<ActionResult<ClientTrackingResponse>> Track(Guid id, CancellationToken cancellationToken)
     {
+        var subject = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
+            User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        if (!Guid.TryParse(subject, out var customerId)) return Forbid();
+
         var workOrder = await _workOrderService.GetByIdAsync(id, cancellationToken);
-        if (workOrder is null)
+        if (workOrder is null || workOrder.CustomerId != customerId)
         {
             return NotFound();
         }
 
-        var normalizedDocument = DocumentValidator.Normalize(document);
         var customer = await _repository.GetCustomerByIdAsync(workOrder.CustomerId, trackChanges: false, cancellationToken);
 
-        if (customer is null || customer.Document != normalizedDocument)
+        if (customer is null || !customer.IsActive)
         {
             return NotFound();
         }
 
-        return Ok(workOrder.ToClientTrackingResponse(customer.Document));
+        return Ok(workOrder.ToClientTrackingResponse());
     }
 }

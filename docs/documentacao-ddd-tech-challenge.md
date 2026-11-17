@@ -36,7 +36,7 @@ O negocio e descrito em portugues. O codigo usa ingles por convencao tecnica. O 
 | Historico de status | WorkOrderStatusHistory | Linha temporal das mudancas da OS |
 | Decisao externa | BudgetDecisionRequest | Aprovacao/recusa recebida por integracao |
 | Notificacao de status | IWorkOrderStatusNotifier | Porta para e-mail/log/ferramenta externa |
-| Tracking publico | ClientTrackingResponse | Consulta publica por OS + documento |
+| Tracking do cliente | ClientTrackingResponse | Consulta da própria OS com JWT `Customer` na evolução da Fase 4 |
 
 ## 3. Bounded Contexts praticos
 
@@ -68,7 +68,7 @@ Narrativa principal:
 6. Admin inicia diagnostico, envia orcamento, aprova, finaliza e entrega.
 7. Integracao externa pode aprovar ou recusar o orcamento por token proprio.
 8. Sistema registra historico e dispara notificacao de status.
-9. Cliente acompanha a OS por `GET /api/client/work-orders/{id}?document=...`.
+9. Na evolução da Fase 4, cliente recebe JWT pela Function CPF e acompanha a própria OS por `GET /api/client/work-orders/{id}`.
 
 Acoes pivotais:
 

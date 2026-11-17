@@ -1,0 +1,14 @@
+{
+  "observedAtUtc": "2026-11-16T21:30:24.5295626Z",
+  "orderId": "6b51579c-2eb0-490a-84aa-33ce691c52a6",
+  "traceId": "cab02ea5adf196ccee5fad3d4196d764",
+  "orderState": "AwaitingApproval",
+  "customerTracking": "passed",
+  "sagaTest": "passed_with_simulated_payment_provider",
+  "bddScenarios": [
+    "Abertura percorre aprovação, reserva, pagamento e execução",
+    "Recusa da execução atravessa a fila e leva a OS para revisão manual"
+  ],
+  "dashboardPanels": 9,
+  "alertDemonstrated": false
+}

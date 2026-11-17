@@ -5,14 +5,13 @@ metadata:
   namespace: oficina
   labels:
     app.kubernetes.io/name: oficina-api
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
+  ingressClassName: traefik
   rules:
     - host: oficina.local
       http:
         paths:
-          - path: /
+          - path: /api
             pathType: Prefix
             backend:
               service:

@@ -40,7 +40,7 @@ public sealed class WorkshopCatalogApplicationService
         return customer;
     }
 
-    public async Task<bool> DeleteCustomerAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<bool> DeactivateCustomerAsync(Guid id, CancellationToken cancellationToken)
     {
         var customer = await _repository.GetCustomerByIdAsync(id, trackChanges: true, cancellationToken);
         if (customer is null)
@@ -48,7 +48,7 @@ public sealed class WorkshopCatalogApplicationService
             return false;
         }
 
-        _repository.RemoveCustomer(customer);
+        customer.Deactivate();
         await _repository.SaveChangesAsync(cancellationToken);
         return true;
     }

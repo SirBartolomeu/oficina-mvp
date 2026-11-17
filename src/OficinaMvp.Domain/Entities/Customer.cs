@@ -20,6 +20,7 @@ public sealed class Customer
     public string Document { get; private set; } = string.Empty;
     public string? Phone { get; private set; }
     public string? Email { get; private set; }
+    public bool IsActive { get; private set; } = true;
 
     public ICollection<Vehicle> Vehicles { get; private set; } = new List<Vehicle>();
 
@@ -35,6 +36,8 @@ public sealed class Customer
         Phone = NormalizeOptional(phone);
         Email = NormalizeOptional(email);
     }
+
+    public void Deactivate() => IsActive = false;
 
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

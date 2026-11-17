@@ -1,0 +1,75 @@
+{
+  "uid": "oficina-local",
+  "title": "Oficina | Operação local",
+  "tags": ["oficina", "demo"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 2,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Prontidão das APIs (1 = pronta)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "probe_success{job=\"oficina-health\"}", "refId": "A", "legendFormat": "{{instance}}" }],
+      "fieldConfig": { "defaults": { "min": 0, "max": 1, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2, "type": "stat", "title": "Ordens abertas (1 h)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum(increase(work_orders_opened_total[1h]))", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 6, "x": 12, "y": 0 }
+    },
+    {
+      "id": 3, "type": "stat", "title": "Falhas SQS (5 min)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum(increase(sqs_message_failures_total[5m])) or vector(0)", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 6, "x": 18, "y": 0 }
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Transições da Saga (5 min)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum by (event_type) (increase(work_order_saga_transitions_total[5m]))", "refId": "A", "legendFormat": "{{event_type}}" }],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 }
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "SQS p95 por serviço (5 min)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "histogram_quantile(0.95, sum by (le, service_name) (rate(sqs_message_processing_duration_seconds_bucket[5m])))", "refId": "A", "legendFormat": "{{service_name}}" }],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 }
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Decisões de orçamento (1 h)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum by (decision) (increase(billing_budgets_decided_total[1h]))", "refId": "A", "legendFormat": "{{decision}}" }],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 }
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Tempo por estado da OS, p95 (1 h)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "histogram_quantile(0.95, sum by (le, state) (rate(work_order_process_state_duration_seconds_bucket[1h])))", "refId": "A", "legendFormat": "{{state}}" }],
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 }
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "CPU dos processos .NET (núcleos, 5 min)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum by (service_name) (rate(dotnet_process_cpu_time_seconds_total[5m]))", "refId": "A", "legendFormat": "{{service_name}}" }],
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 23 }
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "Memória dos processos .NET",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "sum by (service_name) (dotnet_process_memory_working_set_bytes)", "refId": "A", "legendFormat": "{{service_name}}" }],
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 23 }
+    }
+  ]
+}

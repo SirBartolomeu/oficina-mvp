@@ -1,6 +1,6 @@
 # Oficina MVP - Tech Challenge Fase 2
 
-API REST para gestao de oficina mecanica evoluida para a Fase 2 do Tech Challenge. A solucao usa `.NET 8`, `C#`, Clean Architecture, DDD tatico, JWT, EF Core, SQLite para uso local simples/testes, PostgreSQL para Docker/Kubernetes, Docker Compose, Kubernetes, Terraform local com kind, GitHub Actions, testes automatizados, cobertura critica e pipeline de vulnerabilidades.
+API REST para gestao de oficina mecanica evoluida para a Fase 2 do Tech Challenge. A solucao usa `.NET 10`, `C#`, Clean Architecture, DDD tatico, JWT, EF Core, SQLite para uso local simples/testes, PostgreSQL para Docker/Kubernetes, Docker Compose, Kubernetes, Terraform local com kind, GitHub Actions, testes automatizados, cobertura critica e pipeline de vulnerabilidades. A evolucao para as Fases 3 e 4 esta em [implementation-plan.md](docs/implementation-plan.md).
 
 ## Objetivo
 
@@ -89,6 +89,15 @@ Configuracao principal:
 - `ConnectionStrings__DefaultConnection=...`
 - `Database__UseMigrations=false` no ambiente local da entrega
 
+Para a integração distribuída em evolução, a API OS usa `Execution__BaseUrl` e
+`Execution__InternalToken` para cotação remota. `Messaging__BillingQueueUrl`
+ativa a publicação de `WorkOrderOpened`; `Messaging__OsEventsQueueUrl` ativa
+o consumo de `BudgetReady`. `Messaging__SqsServiceUrl` aponta apenas para o
+emulador local. O roteiro de teste da ida e volta está em
+`services/Oficina.Billing/README.md`.
+
+A partir da evolução para .NET 10, uma migration inicial PostgreSQL foi versionada em `src/OficinaMvp.Infrastructure/Persistence/Migrations`. Em `Production`, a API aplica migrations independentemente de `Database__UseMigrations`; em desenvolvimento com banco já criado por `EnsureCreated`, mantenha o banco local e não altere a flag sem planejar a migração dos dados. A migration PostgreSQL não é aplicada aos testes SQLite em memória.
+
 ## Seed de demo
 
 A seed idempotente roda em `Development` ou quando `SeedDemoData=true`:
@@ -128,7 +137,7 @@ Token de integracao externa:
 Administrativos com JWT:
 
 - `POST /api/auth/token`
-- CRUD `/api/customers`
+- `/api/customers`: cadastro, consulta, atualização e `DELETE /{id}` para inativar sem apagar o histórico; a resposta inclui `isActive`
 - CRUD `/api/vehicles`
 - CRUD `/api/services`
 - CRUD `/api/parts`
@@ -143,9 +152,9 @@ Administrativos com JWT:
 - `POST /api/work-orders/{id}/deliver`
 - `GET /api/work-orders/metrics/average-execution-time`
 
-Publico:
+Cliente autenticado com JWT `Customer` da Function (sem CPF na URL ou resposta):
 
-- `GET /api/client/work-orders/{id}?document={cpfOuCnpj}`
+- `GET /api/client/work-orders/{id}`
 
 Integracao externa:
 

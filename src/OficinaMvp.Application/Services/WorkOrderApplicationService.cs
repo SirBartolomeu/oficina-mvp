@@ -1,5 +1,6 @@
 using OficinaMvp.Application.Contracts;
 using OficinaMvp.Application.Ports;
+using OficinaMvp.Application.Observability;
 using OficinaMvp.Domain.Entities;
 using OficinaMvp.Domain.Exceptions;
 using OficinaMvp.Domain.Validation;
@@ -10,11 +11,19 @@ public sealed class WorkOrderApplicationService
 {
     private readonly IWorkshopRepository _repository;
     private readonly IWorkOrderStatusNotifier _notifier;
+    private readonly IExecutionQuoteClient? _executionQuoteClient;
+    private readonly IIntegrationOutbox _outbox;
 
-    public WorkOrderApplicationService(IWorkshopRepository repository, IWorkOrderStatusNotifier notifier)
+    public WorkOrderApplicationService(
+        IWorkshopRepository repository,
+        IWorkOrderStatusNotifier notifier,
+        IIntegrationOutbox outbox,
+        IExecutionQuoteClient? executionQuoteClient = null)
     {
         _repository = repository;
         _notifier = notifier;
+        _outbox = outbox;
+        _executionQuoteClient = executionQuoteClient;
     }
 
     public async Task<WorkOrder> CreateAsync(CreateWorkOrderRequest request, CancellationToken cancellationToken)
@@ -54,8 +63,23 @@ public sealed class WorkOrderApplicationService
             vehicle.Update(normalizedPlate, request.Vehicle.Brand, request.Vehicle.Model, request.Vehicle.Year);
         }
 
-        var serviceLines = await BuildServiceLinesAsync(requestedServices, cancellationToken);
-        var partLines = await BuildPartLinesAsync(requestedParts, cancellationToken);
+        IReadOnlyCollection<WorkOrderServiceLine> serviceLines;
+        IReadOnlyCollection<WorkOrderPartLine> partLines;
+        if (_executionQuoteClient is null)
+        {
+            serviceLines = await BuildServiceLinesAsync(requestedServices, cancellationToken);
+            partLines = await BuildPartLinesAsync(requestedParts, cancellationToken);
+        }
+        else
+        {
+            var quote = await _executionQuoteClient.QuoteAsync(requestedServices, requestedParts, cancellationToken);
+            serviceLines = BuildQuotedServiceLines(requestedServices, quote.Services);
+            partLines = BuildQuotedPartLines(requestedParts, quote.Parts);
+            var calculatedCents = serviceLines.Sum(item => checked((long)(item.Subtotal * 100m)))
+                + partLines.Sum(item => checked((long)(item.Subtotal * 100m)));
+            if (calculatedCents != quote.TotalCents)
+                throw new DomainException("A cotação da Execução retornou total inconsistente.");
+        }
 
         var workOrder = new WorkOrder(
             customer.Id,
@@ -63,10 +87,14 @@ public sealed class WorkOrderApplicationService
             serviceLines,
             partLines,
             request.Notes,
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            request.BranchId);
 
         _repository.AddWorkOrder(workOrder);
+        if (_executionQuoteClient is not null)
+            _outbox.Enqueue(CreateOpenedEvent(workOrder));
         await _repository.SaveChangesAsync(cancellationToken);
+        WorkOrderMetrics.RecordOpened();
         await NotifyLatestStatusAsync(workOrder, cancellationToken);
 
         return await GetRequiredByIdAsync(workOrder.Id, cancellationToken);
@@ -77,7 +105,8 @@ public sealed class WorkOrderApplicationService
         var workOrders = await _repository.ListWorkOrdersAsync(cancellationToken);
 
         return workOrders
-            .Where(item => item.Status is not WorkOrderStatus.Finalized and not WorkOrderStatus.Delivered)
+            .Where(item => item.Status is not WorkOrderStatus.Finalized
+                and not WorkOrderStatus.Delivered and not WorkOrderStatus.Canceled)
             .OrderBy(item => GetActiveListPriority(item.Status))
             .ThenBy(item => item.CreatedAtUtc)
             .ToList();
@@ -101,10 +130,35 @@ public sealed class WorkOrderApplicationService
         }
 
         var changedAt = DateTime.UtcNow;
+        if (action == WorkOrderAction.ApproveBudget && _executionQuoteClient is not null)
+            throw new DomainException("A aprovação do orçamento distribuído deve ser registrada no Billing.");
+        if (action == WorkOrderAction.Finalize && _executionQuoteClient is not null)
+            throw new DomainException("A conclusão do reparo distribuído deve ser registrada na Execução.");
         ApplyTransition(workOrder, action, changedAt);
 
         await _repository.SaveChangesAsync(cancellationToken);
         await NotifyLatestStatusAsync(workOrder, cancellationToken);
+        return await GetRequiredByIdAsync(id, cancellationToken);
+    }
+
+    public async Task<WorkOrder> RequestRefundAsync(Guid id, string reason,
+        CancellationToken cancellationToken)
+    {
+        if (_executionQuoteClient is null)
+            throw new DomainException("Estorno distribuído exige Billing e Execução configurados.");
+        var workOrder = await _repository.GetWorkOrderByIdAsync(id, trackChanges: true,
+            cancellationToken) ?? throw new KeyNotFoundException("Ordem de serviço não encontrada.");
+        if (workOrder.ProcessState == WorkOrderProcessState.RefundRequested)
+            return await GetRequiredByIdAsync(id, cancellationToken);
+        var refundRequestId = Guid.NewGuid();
+        var occurredAt = DateTime.UtcNow;
+        workOrder.RequestRefundAfterReview(refundRequestId, occurredAt, reason);
+        _outbox.Enqueue(new IntegrationEnvelope<RefundPaymentRequestedPayload>(
+            refundRequestId, "RefundPaymentRequested", 1, workOrder.Id, Guid.NewGuid(),
+            workOrder.Id, workOrder.BranchId, occurredAt,
+            new RefundPaymentRequestedPayload(workOrder.PaymentAttemptId!.Value,
+                refundRequestId, reason.Trim())));
+        await _repository.SaveChangesAsync(cancellationToken);
         return await GetRequiredByIdAsync(id, cancellationToken);
     }
 
@@ -117,10 +171,10 @@ public sealed class WorkOrderApplicationService
         }
 
         var occurredAt = request.OccurredAtUtc ?? DateTime.UtcNow;
+        if (_executionQuoteClient is not null)
+            throw new DomainException("A decisão do orçamento distribuído deve ser registrada no Billing.");
         if (request.Approved)
-        {
             workOrder.ApproveBudget(occurredAt);
-        }
         else
         {
             workOrder.RegisterBudgetRefusal(occurredAt, request.Reason);
@@ -202,6 +256,53 @@ public sealed class WorkOrderApplicationService
                 return new WorkOrderServiceLine(service.Id, service.Name, item.Quantity, service.LaborPrice);
             })
             .ToList();
+    }
+
+    private static IReadOnlyCollection<WorkOrderServiceLine> BuildQuotedServiceLines(
+        IReadOnlyCollection<RequestedService> requested,
+        IReadOnlyCollection<ExecutionQuotedItem> quoted)
+    {
+        ValidateQuoteItems(requested.Select(item => (item.ServiceId, item.Quantity)), quoted);
+        return quoted.Select(item => new WorkOrderServiceLine(item.Id, item.Name, item.Quantity,
+            item.UnitPriceCents / 100m)).ToList();
+    }
+
+    private static IReadOnlyCollection<WorkOrderPartLine> BuildQuotedPartLines(
+        IReadOnlyCollection<RequestedPart> requested,
+        IReadOnlyCollection<ExecutionQuotedItem> quoted)
+    {
+        ValidateQuoteItems(requested.Select(item => (item.PartId, item.Quantity)), quoted);
+        return quoted.Select(item => new WorkOrderPartLine(item.Id, item.Name, item.Quantity,
+            item.UnitPriceCents / 100m)).ToList();
+    }
+
+    private static void ValidateQuoteItems(
+        IEnumerable<(Guid Id, int Quantity)> requested,
+        IReadOnlyCollection<ExecutionQuotedItem> quoted)
+    {
+        var expected = requested.GroupBy(item => item.Id)
+            .ToDictionary(group => group.Key, group => group.Sum(item => item.Quantity));
+        if (quoted.Count != expected.Count || quoted.Any(item => item.Id == Guid.Empty ||
+            string.IsNullOrWhiteSpace(item.Name) || item.Quantity <= 0 || item.UnitPriceCents < 0 ||
+            !expected.TryGetValue(item.Id, out var quantity) || quantity != item.Quantity) ||
+            quoted.Select(item => item.Id).Distinct().Count() != quoted.Count)
+            throw new DomainException("A cotação da Execução não corresponde aos itens solicitados.");
+    }
+
+    private static IntegrationEnvelope<WorkOrderOpenedPayload> CreateOpenedEvent(WorkOrder order)
+    {
+        var lines = order.Services.Select(item => new WorkOrderOpenedLine(
+                "Service", item.ServiceId, item.ServiceName, item.Quantity,
+                checked((long)(item.UnitPrice * 100m))))
+            .Concat(order.Parts.Select(item => new WorkOrderOpenedLine(
+                "Part", item.PartSupplyId, item.PartName, item.Quantity,
+                checked((long)(item.UnitPrice * 100m)))))
+            .ToArray();
+        var payload = new WorkOrderOpenedPayload(1, lines,
+            checked((long)(order.BudgetTotal * 100m)), "BRL", order.CreatedAtUtc);
+        return new IntegrationEnvelope<WorkOrderOpenedPayload>(
+            Guid.NewGuid(), "WorkOrderOpened", 1, order.Id, Guid.NewGuid(),
+            order.Id, order.BranchId, order.CreatedAtUtc, payload);
     }
 
     private async Task<IReadOnlyCollection<WorkOrderPartLine>> BuildPartLinesAsync(

@@ -1,0 +1,35 @@
+services:
+  oficina-api:
+    environment:
+      ConnectionStrings__DefaultConnection: Host=oficina-db;Port=5432;Database=oficina_saga_migrated_local;Username=oficina;Password=oficina-local-password
+      Database__UseMigrations: "true"
+      Execution__BaseUrl: http://execution-api:8080
+      Execution__InternalToken: execution-local-internal-token-only-123456
+      Messaging__SqsServiceUrl: http://elasticmq:9324
+      Messaging__BillingQueueUrl: http://elasticmq:9324/000000000000/billing-workorders
+      Messaging__ExecutionCommandsQueueUrl: http://elasticmq:9324/000000000000/execution-commands
+      Messaging__OsEventsQueueUrl: http://elasticmq:9324/000000000000/os-events
+    depends_on:
+      elasticmq:
+        condition: service_started
+      execution-api:
+        condition: service_started
+
+  execution-api:
+    environment:
+      ConnectionStrings__DefaultConnection: Host=execution-db;Port=5432;Database=oficina_execution_saga_local;Username=execution;Password=execution-local-password
+      Messaging__SqsServiceUrl: http://elasticmq:9324
+      Messaging__CommandsQueueUrl: http://elasticmq:9324/000000000000/execution-commands
+      Messaging__OsEventsQueueUrl: http://elasticmq:9324/000000000000/os-events
+    depends_on:
+      elasticmq:
+        condition: service_started
+
+  billing-api:
+    environment:
+      Messaging__SqsServiceUrl: http://elasticmq:9324
+      Messaging__WorkOrdersQueueUrl: http://elasticmq:9324/000000000000/billing-workorders
+      Messaging__OsEventsQueueUrl: http://elasticmq:9324/000000000000/os-events
+    depends_on:
+      elasticmq:
+        condition: service_started

@@ -21,6 +21,7 @@ public sealed class TokenService : ITokenService
         {
             new(JwtRegisteredClaimNames.Sub, username),
             new(ClaimTypes.Name, username),
+            new(ClaimTypes.Role, "Admin"),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N"))
         };
 

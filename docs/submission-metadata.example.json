@@ -1,0 +1,16 @@
+{
+  "participants": [
+    { "name": "Arturo Araujo Américo", "rm": "370776" }
+  ],
+  "repositories": {
+    "os": "URL REPO 1",
+    "execution": "URL REPO 2",
+    "billing": "URL REPO 3",
+    "auth": "URL REPO 4",
+    "k8s_infra": "URL REPO 5",
+    "data_infra": "URL REPO 6"
+  },
+  "video_url": "URL VIDEO",
+  "documentation_url": "URL DOCUMENTACAO",
+  "soat_architecture_added": false
+}

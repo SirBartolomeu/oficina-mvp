@@ -1,0 +1,29 @@
+# Exemplo opcional: substituir host e criar certificado TLS antes de aplicar.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oficina-public
+  namespace: oficina
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [oficina.example.invalid]
+      secretName: oficina-tls
+  rules:
+    - host: oficina.example.invalid
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: oficina-api
+                port:
+                  number: 80
+          - path: /webhooks/mercado-pago/orders
+            pathType: Exact
+            backend:
+              service:
+                name: billing-api
+                port:
+                  number: 80

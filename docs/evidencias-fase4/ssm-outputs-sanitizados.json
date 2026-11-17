@@ -1,0 +1,38 @@
+[
+  {
+    "commandId": "4f7befb4-d806-489a-b8d8-158b47b13d42",
+    "status": "Success",
+    "stdout": "oficina-api /health/ready: HTTP 200\nexecution-api /health/ready: HTTP 200\nbilling-api /health/ready: HTTP 200\nNAME                             READY   UP-TO-DATE   AVAILABLE   AGE\ndeployment.apps/billing-api      1/1     1            1           52m\ndeployment.apps/blackbox         1/1     1            1           52m\ndeployment.apps/execution-api    1/1     1            1           52m\ndeployment.apps/grafana          1/1     1            1           52m\ndeployment.apps/oficina-api      1/1     1            1           52m\ndeployment.apps/otel-collector   1/1     1            1           52m\ndeployment.apps/prometheus       1/1     1            1           52m\ndeployment.apps/tempo            1/1     1            1           11m\n\nNAME                                 READY   STATUS    RESTARTS   AGE\npod/billing-api-69bf4df4d6-ntkmr     1/1     Running   0          38m\npod/blackbox-5db46444cc-zjbs8        1/1     Running   0          52m\npod/execution-api-864ddb7f85-lf7tq   1/1     Running   0          35m\npod/grafana-5c5cd4d577-bmk7h         1/1     Running   0          11m\npod/oficina-api-7cd6f5c78f-glsf4     1/1     Running   0          36m\npod/otel-collector-8b845674c-7hkvf   1/1     Running   0          11m\npod/prometheus-564c466b4f-pjc27      1/1     Running   0          52m\npod/tempo-55d65d8476-7cwmp           1/1     Running   0          11m\n\nNAME                          TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)             AGE\nservice/billing-api           ClusterIP   10.43.140.188   <none>        80/TCP              52m\nservice/blackbox              ClusterIP   10.43.23.112    <none>        9115/TCP            52m\nservice/execution-api         ClusterIP   10.43.225.122   <none>        80/TCP              52m\nservice/grafana               ClusterIP   10.43.63.111    <none>        3000/TCP            52m\nservice/oficina-api           ClusterIP   10.43.35.175    <none>        80/TCP              52m\nservice/oficina-auth-lookup   NodePort    10.43.116.202   <none>        80:30080/TCP        52m\nservice/otel-collector        ClusterIP   10.43.67.226    <none>        4317/TCP,8889/TCP   52m\nservice/prometheus            ClusterIP   10.43.43.209    <none>        9090/TCP            52m\nservice/tempo                 ClusterIP   10.43.240.43    <none>        3200/TCP,4317/TCP   11m\nblackbox         1/1     1            1           52m\ngrafana          1/1     1            1           52m\notel-collector   1/1     1            1           52m\nprometheus       1/1     1            1           52m\ntempo            1/1     1            1           11m\n",
+    "stderr": ""
+  },
+  {
+    "commandId": "c3be80c1-8327-4b01-b947-8dd15ca5792e",
+    "status": "Success",
+    "stdout": "OS=d3e64514-a8d1-40ec-a855-a8c64dd4b204 status=AwaitingApproval trace=14be36a705f99c6b3a1b9cbd32e8b138\n",
+    "stderr": ""
+  },
+  {
+    "commandId": "a5668582-4bb4-400c-ba47-c33be02db550",
+    "status": "Success",
+    "stdout": "{\"workOrderId\": \"d3e64514-a8d1-40ec-a855-a8c64dd4b204\", \"budgetId\": \"30318354-2fc8-4fe0-bcaa-606fad9ab4cd\", \"approvalStatus\": 2}\n",
+    "stderr": ""
+  },
+  {
+    "commandId": "69492d67-354c-48ee-b523-982a82033924",
+    "status": "Success",
+    "stdout": "{\"workOrderId\": \"d3e64514-a8d1-40ec-a855-a8c64dd4b204\", \"traceId\": \"82a6b9d87ce1a2fe61d2a4711ca561ee\", \"traceVisibleInTempo\": true}\n",
+    "stderr": ""
+  },
+  {
+    "commandId": "772a1782-7281-46a2-b2cf-33e0bc57e79f",
+    "status": "Success",
+    "stdout": "{\"workOrderId\": \"fa11285a-5219-4150-91ee-8388a2dc69f7\", \"budgetId\": \"83d3de7d-c498-45d9-a6bf-30bbe6d0c86f\", \"budgetDecision\": 3, \"osStatus\": \"AwaitingApproval\", \"processState\": \"AwaitingApproval\", \"compensationConfirmed\": false}\n",
+    "stderr": ""
+  },
+  {
+    "commandId": "e6e444e9-559e-4f6e-8ee3-6721a63c9e79",
+    "status": "Success",
+    "stdout": "TEMPO=ready status=200\nTRACE= status=404\nSEARCH={\"traces\":[{\"traceID\":\"516ce04cf25d07be4aee052eb5178b8\",\"rootServiceName\":\"oficina-billing\",\"rootTraceName\":\"POST\",\"startTimeUnixNano\":\"1794951015165339800\",\"durationMs\":2},{\"traceID\":\"8bf0439b838f54f5d913572de893c4bb\",\"rootServiceName\":\"oficina-execution\",\"rootTraceName\":\"POST\",\"startTimeUnixNano\":\"1794951000158036000\",\"durationMs\":10004},{\"traceID\":\"8697dc0a7c1d336b07c6def151b49ac3\",\"rootServiceName\":\"oficina-os\",\"rootTraceName\":\"POST\",\"startTimeUnixNano\":\"1794950992755623600\",\"durationMs\":10004},{\"traceID\":\"8940ec658150a8221af0545a3d5ed70\",\"rootServiceName\":\"oficina-billing\",\"rootTraceName\":\"POST\",\"startTimeUnixNano\":\"1794950984757216700\",\"durationMs\":1},{\"traceID\":\"837587e4101ed796f909dcd495756722\",\"rootServiceName\":\"oficina-billing\",\"rootTraceName\":\"POST\",\"startTimeUnixNano\":\"1794950973167697200\",\"durationMs\":2},{\"traceID\":\"84483a53a5a2e7dc4caa72a4c285bae9\",\"rootServiceName\":\"oficina-billing\",\"rootTraceName\":\"POST\",\"startTimeUnixNano\":\"1794950966756141400\",\"durationMs\":2}],\"metric\nDATASOURCES=[{\"id\":1,\"uid\":\"prometheus\",\"orgId\":1,\"name\":\"Prometheus\",\"type\":\"prometheus\",\"typeName\":\"Prometheus\",\"typeLogoUrl\":\"public/plugins/prometheus/img/prometheus_logo.svg\",\"access\":\"proxy\",\"url\":\"http://prometheus:9090\",\"user\":\"\",\"database\":\"\",\"basicAuth\":false,\"isDefault\":true,\"jsonData\":{},\"readOnly\":true},{\"id\":2,\"uid\":\"tempo\",\"orgId\":1,\"name\":\"Tempo\",\"type\":\"tempo\",\"typeName\":\"Tempo\",\"typeLogoUrl\":\"public/plugins/tempo/img/tempo_logo.svg\",\"access\":\"proxy\",\"url\":\"http://tempo:3200\",\"user\":\"\",\"database\":\"\",\"basicAuth\":false,\"isDefault\":false,\"jsonData\":{},\"readOnly\":true}] status=200\n",
+    "stderr": ""
+  }
+]

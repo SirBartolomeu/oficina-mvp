@@ -1,0 +1,99 @@
+name: os-ci
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/**', 'tests/OficinaMvp.Domain.Tests/**', 'tests/OficinaMvp.Integration.Tests/**', 'tests/OficinaMvp.Postgres.Tests/**', 'scripts/validate-os-coverage.py', 'k8s/services/os/**', 'global.json', '.github/workflows/os-ci.yml']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Domain tests
+        run: dotnet test tests/OficinaMvp.Domain.Tests --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory test-results/os-domain
+      - name: OS integration tests
+        run: dotnet test tests/OficinaMvp.Integration.Tests --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory test-results/os-integration
+      - name: Start PostgreSQL for concurrency test
+        run: |
+          docker run --rm -d --name oficina-os-postgres -e POSTGRES_PASSWORD=local-ci-password -p 127.0.0.1:5432:5432 postgres:16-alpine
+          for attempt in {1..30}; do
+            if docker exec oficina-os-postgres pg_isready -U postgres -q; then exit 0; fi
+            sleep 2
+          done
+          docker logs oficina-os-postgres
+          exit 1
+      - name: OS PostgreSQL concurrency test
+        env:
+          OS_POSTGRES_CONNECTION_STRING: Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Password=local-ci-password
+        run: dotnet test tests/OficinaMvp.Postgres.Tests --configuration Release --collect:"XPlat Code Coverage" --logger trx --results-directory test-results/os-postgres
+      - name: OS 80% coverage gate
+        run: python3 scripts/validate-os-coverage.py --domain test-results/os-domain --integration test-results/os-integration --postgres test-results/os-postgres --minimum 80
+      - name: Build OS container
+        run: docker build -f src/OficinaMvp.Api/Dockerfile -t oficina-os:${{ github.sha }} .
+      - name: ECR publication pending configuration
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && (vars.AWS_REGION == '' || vars.AWS_ROLE_ARN_OS == '' || vars.ECR_REPOSITORY_OS == '')
+        run: echo '::warning::ECR publication skipped; configure AWS_REGION, AWS_ROLE_ARN_OS and ECR_REPOSITORY_OS.'
+      - name: Configure AWS credentials for ECR
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.AWS_REGION != '' && vars.AWS_ROLE_ARN_OS != '' && vars.ECR_REPOSITORY_OS != ''
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN_OS }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Login to ECR
+        id: ecr-login
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.AWS_REGION != '' && vars.AWS_ROLE_ARN_OS != '' && vars.ECR_REPOSITORY_OS != ''
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Push OS image to ECR
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.AWS_REGION != '' && vars.AWS_ROLE_ARN_OS != '' && vars.ECR_REPOSITORY_OS != ''
+        env:
+          IMAGE_URI: ${{ steps.ecr-login.outputs.registry }}/${{ vars.ECR_REPOSITORY_OS }}:${{ github.sha }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY_OS }}
+        run: |
+          if aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids "imageTag=$GITHUB_SHA" >/dev/null 2>&1; then
+            echo 'Image already exists in immutable ECR repository.'
+          else
+            docker tag oficina-os:${{ github.sha }} "$IMAGE_URI"
+            docker push "$IMAGE_URI"
+          fi
+      - name: K3s deploy pending configuration
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && (vars.SSM_DOCUMENT_OS == '' || vars.K3S_INSTANCE_ID == '')
+        run: echo '::warning::K3s deploy skipped; configure SSM_DOCUMENT_OS and K3S_INSTANCE_ID.'
+      - name: Deploy OS in K3s through SSM
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.AWS_REGION != '' && vars.AWS_ROLE_ARN_OS != '' && vars.ECR_REPOSITORY_OS != '' && vars.SSM_DOCUMENT_OS != '' && vars.K3S_INSTANCE_ID != ''
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          SSM_DOCUMENT: ${{ vars.SSM_DOCUMENT_OS }}
+          K3S_INSTANCE_ID: ${{ vars.K3S_INSTANCE_ID }}
+        run: |
+          set -euo pipefail
+          command_id="$(aws ssm send-command --document-name "$SSM_DOCUMENT" --instance-ids "$K3S_INSTANCE_ID" --parameters "imageTag=$GITHUB_SHA" --query 'Command.CommandId' --output text)"
+          status=Pending
+          for attempt in {1..84}; do
+            status="$(aws ssm get-command-invocation --command-id "$command_id" --instance-id "$K3S_INSTANCE_ID" --query Status --output text 2>/dev/null || true)"
+            case "$status" in Success) break;; Failed|Cancelled|TimedOut) break;; esac
+            sleep 5
+          done
+          aws ssm get-command-invocation --command-id "$command_id" --instance-id "$K3S_INSTANCE_ID" --query '{Status:Status,Output:StandardOutputContent}'
+          test "$status" = Success
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: os-test-results
+          path: |
+            test-results/**/*.trx
+            test-results/**/coverage.cobertura.xml
+          if-no-files-found: ignore

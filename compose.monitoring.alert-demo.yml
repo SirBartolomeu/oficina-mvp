@@ -1,0 +1,4 @@
+services:
+  prometheus:
+    volumes:
+      - ./config/prometheus-alert-demo.yaml:/etc/prometheus/prometheus.yml:ro

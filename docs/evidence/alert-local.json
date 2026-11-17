@@ -1,0 +1,11 @@
+{
+  "observedAtUtc": "2026-11-15T06:49:52.4653645Z",
+  "alertName": "OficinaServiceUnavailable",
+  "state": "firing",
+  "instance": "http://alert-demo:8080/health/ready",
+  "healthyApis": [
+    "http://billing-api:8080/health/ready",
+    "http://execution-api:8080/health/ready",
+    "http://oficina-api:8080/health/ready"
+  ]
+}

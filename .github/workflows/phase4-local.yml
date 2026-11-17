@@ -1,0 +1,80 @@
+name: phase4-local
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  phase4-tests:
+    runs-on: ubuntu-latest
+    env:
+      BILLING_DYNAMO_ENDPOINT: http://127.0.0.1:8000
+      MESSAGING_SQS_ENDPOINT: http://127.0.0.1:9324
+      OS_POSTGRES_CONNECTION_STRING: Host=127.0.0.1;Port=5433;Database=oficina_execution;Username=execution;Password=execution-local-password;Search Path=os_outbox_retry_ci
+      EXECUTION_OUTBOX_POSTGRES_CONNECTION_STRING: Host=127.0.0.1;Port=5433;Database=oficina_execution;Username=execution;Password=execution-local-password;Search Path=execution_outbox_retry_ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Start local message and database emulators
+        run: docker compose -f compose.billing.yml -f compose.messaging.yml -f compose.execution.yml up -d dynamodb-local elasticmq execution-db
+
+      - name: Wait for local emulators
+        shell: bash
+        run: |
+          for attempt in {1..30}; do
+            if curl --silent --output /dev/null "$BILLING_DYNAMO_ENDPOINT" &&
+               curl --silent --output /dev/null "$MESSAGING_SQS_ENDPOINT" &&
+               docker compose -f compose.execution.yml exec -T execution-db \
+                 pg_isready -U execution -d oficina_execution; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f compose.billing.yml -f compose.messaging.yml -f compose.execution.yml ps
+          exit 1
+
+      - name: Prepare isolated PostgreSQL schemas
+        run: |
+          docker compose -f compose.execution.yml exec -T execution-db psql -U execution -d oficina_execution -v ON_ERROR_STOP=1 -c 'CREATE SCHEMA IF NOT EXISTS os_outbox_retry_ci'
+          docker compose -f compose.execution.yml exec -T execution-db psql -U execution -d oficina_execution -v ON_ERROR_STOP=1 -c 'CREATE SCHEMA IF NOT EXISTS execution_outbox_retry_ci'
+
+      - name: Billing unit tests
+        run: dotnet test services/Oficina.Billing.Tests --configuration Release --logger trx --results-directory test-results/billing-unit
+
+      - name: Billing DynamoDB integration tests
+        run: dotnet test services/Oficina.Billing.Dynamo.Tests --configuration Release --logger trx --results-directory test-results/billing-dynamo
+
+      - name: Execution unit tests
+        run: dotnet test services/Oficina.Execution.Tests --configuration Release --logger trx --results-directory test-results/execution-unit
+
+      - name: Saga and BDD scenarios
+        run: dotnet test tests/Oficina.Messaging.Local.Tests --configuration Release --logger trx --results-directory test-results/saga
+
+      - name: Executable Gherkin BDD transitions
+        run: dotnet test tests/Oficina.Saga.Bdd.Tests --configuration Release --logger trx --results-directory test-results/bdd
+
+      - name: OS PostgreSQL concurrency test
+        run: dotnet test tests/OficinaMvp.Postgres.Tests --configuration Release --logger trx --results-directory test-results/os-postgres
+
+      - name: Execution PostgreSQL Outbox concurrency test
+        run: dotnet test services/Oficina.Execution.Postgres.Tests --configuration Release --filter FullyQualifiedName~ExecutionOutboxConcurrencyTests --logger trx --results-directory test-results/execution-postgres
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase4-local-test-results
+          path: test-results/**/*.trx
+          if-no-files-found: ignore

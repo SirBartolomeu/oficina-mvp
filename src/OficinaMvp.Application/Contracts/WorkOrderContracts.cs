@@ -9,6 +9,7 @@ public sealed record CreateWorkOrderRequest
     public IReadOnlyCollection<RequestedService> Services { get; init; } = Array.Empty<RequestedService>();
     public IReadOnlyCollection<RequestedPart> Parts { get; init; } = Array.Empty<RequestedPart>();
     public string? Notes { get; init; }
+    public string? BranchId { get; init; }
 }
 
 public sealed record VehicleInfo
@@ -45,7 +46,10 @@ public sealed record WorkOrderSummaryResponse(
     WorkOrderStatus Status,
     decimal BudgetTotal,
     DateTime CreatedAtUtc,
-    DateTime UpdatedAtUtc);
+    DateTime UpdatedAtUtc)
+{
+    public string? BranchId { get; init; }
+}
 
 public sealed record WorkOrderServiceLineResponse(Guid ServiceId, string ServiceName, int Quantity, decimal UnitPrice, decimal Subtotal);
 public sealed record WorkOrderPartLineResponse(Guid PartSupplyId, string PartName, int Quantity, decimal UnitPrice, decimal Subtotal);
@@ -64,7 +68,11 @@ public sealed record WorkOrderDetailResponse(
     DateTime UpdatedAtUtc,
     IReadOnlyCollection<WorkOrderServiceLineResponse> Services,
     IReadOnlyCollection<WorkOrderPartLineResponse> Parts,
-    IReadOnlyCollection<WorkOrderStatusHistoryResponse> StatusHistory);
+    IReadOnlyCollection<WorkOrderStatusHistoryResponse> StatusHistory)
+{
+    public string? BranchId { get; init; }
+    public WorkOrderProcessState ProcessState { get; init; }
+}
 
 public sealed record AverageExecutionTimeResponse(double AverageMinutes, int ProcessedOrders);
 
@@ -78,16 +86,20 @@ public sealed record WorkOrderStatusResponse(
     DateTime? ApprovedAtUtc,
     DateTime? ExecutionStartedAtUtc,
     DateTime? FinalizedAtUtc,
-    DateTime? DeliveredAtUtc);
+    DateTime? DeliveredAtUtc)
+{
+    public WorkOrderProcessState ProcessState { get; init; }
+}
 
 public sealed record BudgetDecisionRequest(
     bool Approved,
     string? Reason,
     DateTime? OccurredAtUtc);
 
+public sealed record RefundDecisionRequest(string Reason);
+
 public sealed record ClientTrackingResponse(
     Guid WorkOrderId,
-    string CustomerDocument,
     WorkOrderStatus Status,
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc,

@@ -96,7 +96,7 @@ public sealed class DomainCriticalCoverageTests : IClassFixture<CustomWebApplica
     }
 
     [Fact]
-    public async Task ShouldReturnBadRequest_WhenClientTrackingDocumentIsInvalid()
+    public async Task ShouldRejectAdminTokenForClientTracking()
     {
         await AuthenticateAsync();
         var workOrderId = await CreateWorkOrderAsync(
@@ -104,9 +104,9 @@ public sealed class DomainCriticalCoverageTests : IClassFixture<CustomWebApplica
             customerName: "Roberto",
             plate: "DEF5678");
 
-        var response = await _httpClient.GetAsync($"/api/client/work-orders/{workOrderId}?document=123");
+        var response = await _httpClient.GetAsync($"/api/client/work-orders/{workOrderId}");
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     private async Task AuthenticateAsync()

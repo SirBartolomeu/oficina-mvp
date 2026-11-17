@@ -1,0 +1,33 @@
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector:0.165.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./config/otel-collector-local.yaml:/etc/otelcol/config.yaml:ro
+
+  oficina-api:
+    environment:
+      Observability__OtlpEndpoint: http://otel-collector:4317
+      Observability__TraceSampleRatio: "1"
+      Observability__MetricExportIntervalSeconds: "10"
+    depends_on:
+      otel-collector:
+        condition: service_started
+
+  execution-api:
+    environment:
+      Observability__OtlpEndpoint: http://otel-collector:4317
+      Observability__TraceSampleRatio: "1"
+      Observability__MetricExportIntervalSeconds: "10"
+    depends_on:
+      otel-collector:
+        condition: service_started
+
+  billing-api:
+    environment:
+      Observability__OtlpEndpoint: http://otel-collector:4317
+      Observability__TraceSampleRatio: "1"
+      Observability__MetricExportIntervalSeconds: "10"
+    depends_on:
+      otel-collector:
+        condition: service_started

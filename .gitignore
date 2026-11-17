@@ -17,6 +17,7 @@ coverage.cobertura.xml
 # Python artifacts
 **/__pycache__/
 *.pyc
+**/*.feature.cs
 
 # Security report probes/temp artifacts
 security-report/raw/semgrep.manual.json
@@ -28,6 +29,7 @@ security-report/temp/
 *.db-shm
 *.db-wal
 .dotnet_home/
+exports/
 terraform.tfstate
 terraform.tfstate.backup
 .terraform/
@@ -35,6 +37,17 @@ terraform.tfstate.backup
 # Local secrets
 *.tfvars
 !*.tfvars.example
+infra/aws-demo/backend.hcl
+infra/aws-demo/artifacts/
+infra/aws-data/backend.hcl
+infra/aws-k3s/backend.hcl
+infra/aws-k3s/artifacts/
+infra/aws-data/plan.tfplan
+infra/aws-data/plan.txt
+infra/aws-k3s/plan.tfplan
+infra/aws-k3s/plan.txt
+docs/submission-metadata.json
+output/pdf/fiap-fase4-entrega-rascunho.pdf
 .env
 .env.*
 

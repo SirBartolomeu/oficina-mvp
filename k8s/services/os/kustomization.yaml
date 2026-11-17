@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: oficina
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - deployment.yaml
+  - auth-lookup-nodeport.yaml
+  - hpa.yaml
+configMapGenerator:
+  - name: oficina-os-config
+    envs: [config.env]

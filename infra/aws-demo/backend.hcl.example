@@ -1,0 +1,5 @@
+bucket       = "SUBSTITUIR_PELO_BUCKET_PRIVADO_DE_ESTADO"
+key          = "oficina-fiap-demo/terraform.tfstate"
+region       = "SUBSTITUIR_PELA_REGIAO"
+encrypt      = true
+use_lockfile = true

@@ -1,0 +1,38 @@
+services:
+  auth-local:
+    build:
+      context: .
+      dockerfile: services/Oficina.Auth.Local/Dockerfile
+    image: oficina-auth-local:dev
+    depends_on:
+      oficina-api:
+        condition: service_healthy
+    environment:
+      AUTH_LOOKUP_URL: http://oficina-api:8080/internal/customers/lookup
+      AUTH_LOOKUP_TOKEN: local-lookup-token-with-at-least-32-characters
+      AUTH_JWT_KEY: OficinaMvp-ChaveJWT-SuperSecreta-Com-32-Caracteres
+      AUTH_JWT_ISSUER: OficinaMvp
+      AUTH_JWT_AUDIENCE: OficinaMvpClients
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health/live >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  gateway:
+    image: traefik:v3.6
+    command:
+      - --entrypoints.websecure.address=:443
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --accesslog=true
+    volumes:
+      - ./config/traefik-local.yml:/etc/traefik/dynamic.yml:ro
+    ports:
+      - "127.0.0.1:8443:443"
+    depends_on:
+      auth-local:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    restart: unless-stopped

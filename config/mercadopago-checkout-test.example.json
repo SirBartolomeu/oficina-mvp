@@ -1,0 +1,21 @@
+{
+  "status": "placeholder-nao-operacional",
+  "environment": "test",
+  "applicationId": "5000203132464527",
+  "applicationName": "Oficina MVP FIAP",
+  "sellerTestApplicationId": "3251250730660971",
+  "sellerTestUserId": "3853944840",
+  "buyerTestUserId": "3853944842",
+  "webhook": {
+    "url": "https://billing-test.example.invalid/webhooks/mercado-pago/orders",
+    "topic": "order",
+    "registered": false
+  },
+  "returnUrl": "https://billing-test.example.invalid/checkout/return",
+  "requiredSecretEnvironmentVariables": [
+    "MP_TEST_ACCESS_TOKEN",
+    "MP_TEST_WEBHOOK_SECRET"
+  ],
+  "optionalEnvironmentVariables": ["MP_TEST_RETURN_URL"],
+  "note": "Modelo para apresentacao; nao e carregado pelo Billing. Substituir URLs por HTTPS publico antes de cadastrar o webhook. Segredos devem vir do ambiente do processo."
+}

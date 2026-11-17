@@ -1,0 +1,59 @@
+name: auth-ci
+
+on:
+  push:
+    branches: [main]
+    paths: ['services/Oficina.Auth/**', 'services/Oficina.Auth.Tests/**', '.github/workflows/auth-ci.yml', 'global.json']
+  pull_request:
+    branches: [main]
+    paths: ['services/Oficina.Auth/**', 'services/Oficina.Auth.Tests/**', '.github/workflows/auth-ci.yml', 'global.json']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-package-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Test Auth Function
+        run: dotnet test services/Oficina.Auth.Tests --configuration Release --logger trx --results-directory test-results/auth
+      - name: Package Lambda
+        run: |
+          dotnet publish services/Oficina.Auth -c Release -o publish
+          cd publish
+          zip -q -r ../oficina-auth.zip .
+      - name: Upload ZIP and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-build
+          path: |
+            oficina-auth.zip
+            test-results/**/*.trx
+          if-no-files-found: ignore
+      - name: AWS deploy pending configuration
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && (vars.AWS_REGION == '' || vars.AWS_ROLE_ARN_AUTH == '' || vars.AUTH_LAMBDA_NAME == '')
+        run: echo '::warning::Lambda deploy skipped; configure AWS_REGION, AWS_ROLE_ARN_AUTH and AUTH_LAMBDA_NAME.'
+      - name: Configure AWS credentials
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.AWS_REGION != '' && vars.AWS_ROLE_ARN_AUTH != '' && vars.AUTH_LAMBDA_NAME != ''
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN_AUTH }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Deploy Auth Lambda
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.AWS_REGION != '' && vars.AWS_ROLE_ARN_AUTH != '' && vars.AUTH_LAMBDA_NAME != ''
+        env:
+          FUNCTION_NAME: ${{ vars.AUTH_LAMBDA_NAME }}
+        run: |
+          set -euo pipefail
+          aws lambda update-function-code --function-name "$FUNCTION_NAME" --zip-file fileb://oficina-auth.zip --query '{FunctionName:FunctionName,Runtime:Runtime,LastUpdateStatus:LastUpdateStatus}'
+          aws lambda wait function-updated --function-name "$FUNCTION_NAME"
+          aws lambda get-function-configuration --function-name "$FUNCTION_NAME" --query '{State:State,LastUpdateStatus:LastUpdateStatus}'

@@ -1,0 +1,17 @@
+groups:
+  - name: oficina
+    rules:
+      - alert: OficinaServiceUnavailable
+        expr: probe_success{job="oficina-health"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Serviço indisponível: {{ $labels.instance }}"
+      - alert: OficinaSqsProcessingFailures
+        expr: increase(sqs_message_failures_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Falhas de consumo SQS em {{ $labels.service_name }}"

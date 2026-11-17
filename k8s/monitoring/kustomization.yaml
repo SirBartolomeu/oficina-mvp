@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: oficina
+resources:
+  - collector.yaml
+  - prometheus.yaml
+  - blackbox.yaml
+  - grafana.yaml
+
+configMapGenerator:
+  - name: otel-collector-config
+    files:
+      - config.yaml=collector-config.yaml
+  - name: prometheus-config
+    files:
+      - prometheus.yml=prometheus-config.yaml
+      - alerts.yml=alerts.yaml
+  - name: blackbox-config
+    files:
+      - config.yml=blackbox-config.yaml
+  - name: grafana-provisioning
+    files:
+      - prometheus.yaml=datasources.yaml
+      - oficina.yaml=dashboards.yaml
+  - name: grafana-dashboard
+    files:
+      - oficina.json=oficina.json

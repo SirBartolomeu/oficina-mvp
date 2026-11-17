@@ -13,6 +13,8 @@ public sealed record PaymentRequest(Guid Id, Guid WorkOrderId, Guid BudgetId, in
     string? BranchId, long TotalCents, DateTime RequestedAtUtc);
 public sealed record PaymentAttempt(Guid Id, string Status, string? ProviderOrderId, string? QrData)
 {
+    public string? CheckoutUrl { get; init; }
+    public long TotalCents { get; init; }
     public Guid? RefundRequestId { get; init; }
     public string? RefundReason { get; init; }
     public DateTime? RefundSubmittedAtUtc { get; init; }

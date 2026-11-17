@@ -15,6 +15,7 @@ using Xunit;
 
 namespace Oficina.Billing.Dynamo.Tests;
 
+[Collection("Billing HTTP environment")]
 public sealed class RefundReconciliationHttpTests
 {
     [Fact]

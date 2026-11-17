@@ -292,6 +292,8 @@ public sealed class BillingRepository(IAmazonDynamoDB dynamo, IConfiguration con
             item.TryGetValue("providerOrderId", out var id) ? id.S : null,
             item.TryGetValue("qrData", out var qr) ? qr.S : null)
         {
+            CheckoutUrl = item.TryGetValue("checkoutUrl", out var checkout) ? checkout.S : null,
+            TotalCents = long.Parse(item["totalCents"].N, System.Globalization.CultureInfo.InvariantCulture),
             RefundRequestId = item.TryGetValue("refundRequestId", out var refundId)
                 ? Guid.Parse(refundId.S) : null,
             RefundReason = item.TryGetValue("refundReason", out var refundReason)
@@ -473,14 +475,15 @@ public sealed class BillingRepository(IAmazonDynamoDB dynamo, IConfiguration con
                         TableName = _table,
                         Key = PaymentKey(paymentAttemptId),
                         ConditionExpression = "#status = :requested",
-                        UpdateExpression = "SET #status = :created, providerOrderId = :orderId, qrData = :qrData",
+                        UpdateExpression = "SET #status = :created, providerOrderId = :orderId, qrData = :qrData, checkoutUrl = :checkoutUrl",
                         ExpressionAttributeNames = new Dictionary<string, string> { ["#status"] = "status" },
                         ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                         {
                             [":requested"] = new() { S = "Requested" },
                             [":created"] = new() { S = "Created" },
                             [":orderId"] = new() { S = order.Id },
-                            [":qrData"] = new() { S = order.QrData }
+                            [":qrData"] = order.QrData is null ? new() { NULL = true } : new() { S = order.QrData },
+                            [":checkoutUrl"] = order.CheckoutUrl is null ? new() { NULL = true } : new() { S = order.CheckoutUrl }
                         }
                     } },
                     new TransactWriteItem { Delete = new Delete
@@ -581,7 +584,7 @@ public sealed class BillingRepository(IAmazonDynamoDB dynamo, IConfiguration con
     public async Task<bool> RejectPaymentAsync(PaymentRequest payment, string providerOrderId,
         string reason, CancellationToken cancellationToken)
     {
-        if (reason is not "expired" and not "canceled")
+        if (reason is not "expired" and not "canceled" and not "failed")
             throw new ArgumentException("Motivo de recusa inválido.");
         var eventId = Guid.NewGuid();
         var occurredAt = DateTime.UtcNow;

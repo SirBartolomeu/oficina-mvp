@@ -1,0 +1,13 @@
+# Usar somente com compose.billing.yml; credenciais vêm do ambiente do processo.
+services:
+  billing-api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      MercadoPago__Mode: CheckoutPro
+      MercadoPago__TestMode: "true"
+      MercadoPago__AccessToken: ${MP_TEST_ACCESS_TOKEN:?Defina o Access Token da conta de teste}
+      # Sem assinatura, o receptor fica desabilitado; usar reconciliacao manual ate o deploy AWS.
+      MercadoPago__WebhookSecret: ${MP_TEST_WEBHOOK_SECRET:-}
+      MercadoPago__ReturnUrl: ${MP_TEST_RETURN_URL:-}
+      MercadoPago__ExternalPosId: ""
+      MercadoPago__EnableRefundWorker: "false"

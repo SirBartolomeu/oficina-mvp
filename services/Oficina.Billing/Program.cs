@@ -75,9 +75,13 @@ builder.Services.AddScoped<RefundRequestHandler>();
 var mercadoPagoToken = builder.Configuration["MercadoPago:AccessToken"];
 var mercadoPagoPos = builder.Configuration["MercadoPago:ExternalPosId"];
 var mercadoPagoWebhookSecret = builder.Configuration["MercadoPago:WebhookSecret"];
+var checkoutPro = builder.Configuration["MercadoPago:Mode"] == "CheckoutPro";
+var testMode = builder.Configuration.GetValue<bool>("MercadoPago:TestMode");
+if (checkoutPro && (!testMode || builder.Environment.IsProduction()))
+    throw new InvalidOperationException("Checkout Pro disponível somente para testes, fora de Production.");
 if (!string.IsNullOrWhiteSpace(mercadoPagoToken) || !string.IsNullOrWhiteSpace(mercadoPagoPos))
 {
-    if (string.IsNullOrWhiteSpace(mercadoPagoToken) || string.IsNullOrWhiteSpace(mercadoPagoPos))
+    if (string.IsNullOrWhiteSpace(mercadoPagoToken) || !checkoutPro && string.IsNullOrWhiteSpace(mercadoPagoPos))
         throw new InvalidOperationException("MercadoPago:AccessToken e ExternalPosId devem ser configurados juntos.");
     builder.Services.AddHttpClient("mercadopago", client =>
     {
@@ -86,10 +90,16 @@ if (!string.IsNullOrWhiteSpace(mercadoPagoToken) || !string.IsNullOrWhiteSpace(m
     });
     builder.Services.AddScoped(provider => new MercadoPagoQrClient(
         provider.GetRequiredService<IHttpClientFactory>().CreateClient("mercadopago"),
-        new MercadoPagoQrOptions(mercadoPagoToken, mercadoPagoPos)));
+        new MercadoPagoQrOptions(mercadoPagoToken, mercadoPagoPos ?? "")
+        {
+            CheckoutPro = checkoutPro, TestMode = testMode,
+            ReturnUrl = builder.Configuration["MercadoPago:ReturnUrl"]
+        }));
     builder.Services.AddScoped<PaymentOrderProcessor>();
     builder.Services.AddScoped<PaymentReconciliationService>();
     builder.Services.AddHostedService<PaymentOrderWorker>();
+    builder.Services.AddScoped<OrderNotificationQueue>();
+    builder.Services.AddHostedService<OrderNotificationWorker>();
     builder.Services.AddScoped<RefundOrderProcessor>();
     if (builder.Configuration.GetValue<bool>("MercadoPago:EnableRefundWorker"))
         builder.Services.AddHostedService<RefundOrderWorker>();
@@ -191,6 +201,21 @@ internalApi.MapGet("/payments/{paymentAttemptId:guid}", async (Guid paymentAttem
 });
 if (!string.IsNullOrWhiteSpace(mercadoPagoToken))
 {
+    internalApi.MapPost("/payments/{paymentAttemptId:guid}/reconcile", async (
+        Guid paymentAttemptId, BillingRepository repository,
+        PaymentReconciliationService reconciliation, CancellationToken ct) =>
+    {
+        var attempt = await repository.GetPaymentAttemptAsync(paymentAttemptId, ct);
+        if (attempt is null) return Results.NotFound();
+        if (string.IsNullOrWhiteSpace(attempt.ProviderOrderId)) return Results.Conflict();
+        try
+        {
+            await reconciliation.ReconcileAsync(attempt.ProviderOrderId, ct);
+            return Results.Ok(await repository.GetPaymentAttemptAsync(paymentAttemptId, ct));
+        }
+        catch (HttpRequestException) { return Results.StatusCode(503); }
+        catch (InvalidOperationException) { return Results.Conflict(); }
+    });
     internalApi.MapPost("/payments/{paymentAttemptId:guid}/reconcile-refund", async (
         Guid paymentAttemptId, BillingRepository repository,
         PaymentReconciliationService reconciliation, CancellationToken ct) =>
@@ -214,22 +239,41 @@ if (!string.IsNullOrWhiteSpace(mercadoPagoToken) &&
     !string.IsNullOrWhiteSpace(mercadoPagoWebhookSecret))
 {
     app.MapPost("/webhooks/mercado-pago/orders", async (HttpRequest request,
-        PaymentReconciliationService reconciliation, CancellationToken ct) =>
+        OrderNotificationQueue notifications, CancellationToken ct) =>
     {
         var orderId = request.Query["data.id"].ToString();
         if (!MercadoPagoWebhookSignature.IsValid(request.Headers["x-signature"],
             request.Headers["x-request-id"], orderId, mercadoPagoWebhookSecret))
             return Results.Unauthorized();
-        using var notification = await JsonDocument.ParseAsync(request.Body, cancellationToken: ct);
-        var root = notification.RootElement;
-        if (!root.TryGetProperty("type", out var type) || type.GetString() != "order" ||
-            !root.TryGetProperty("data", out var data) ||
-            !data.TryGetProperty("id", out var id) || id.GetString() != orderId)
+        if (orderId.Length > 64 || !orderId.StartsWith("ORD", StringComparison.Ordinal) ||
+            orderId.Any(ch => !char.IsLetterOrDigit(ch))) return Results.BadRequest();
+        if (checkoutPro && !orderId.StartsWith("ORDTST", StringComparison.Ordinal))
             return Results.BadRequest();
-        await reconciliation.ReconcileAsync(orderId, ct);
+        JsonDocument notification;
+        try { notification = await JsonDocument.ParseAsync(request.Body, cancellationToken: ct); }
+        catch (JsonException) { return Results.BadRequest(); }
+        using (notification)
+        {
+        var root = notification.RootElement;
+        if (root.ValueKind != JsonValueKind.Object ||
+            !root.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String || type.GetString() != "order" ||
+            !root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object ||
+            !data.TryGetProperty("id", out var id) || id.ValueKind != JsonValueKind.String || id.GetString() != orderId)
+            return Results.BadRequest();
+        if (checkoutPro && (!root.TryGetProperty("live_mode", out var live) || live.ValueKind != JsonValueKind.False))
+            return Results.BadRequest();
+        await notifications.EnqueueAsync(orderId, ct);
         return Results.Ok();
+        }
     });
 }
+
+if (app.Environment.IsDevelopment() && checkoutPro)
+{
+    app.MapGet("/dev/checkout", () => Results.Content(CheckoutTestPage.Html, "text/html; charset=utf-8"));
+}
+app.MapGet("/checkout/return", () => Results.Content(
+    "Retorno recebido. O resultado do pagamento será confirmado pelo servidor após consulta ao Mercado Pago.", "text/plain; charset=utf-8"));
 
 app.Run();
 

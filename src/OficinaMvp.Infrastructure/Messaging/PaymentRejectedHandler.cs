@@ -19,7 +19,7 @@ public sealed class PaymentRejectedHandler(WorkshopDbContext dbContext)
             envelope.Payload is null || envelope.Payload.PaymentAttemptId == Guid.Empty ||
             string.IsNullOrWhiteSpace(envelope.Payload.ProviderOrderId) ||
             envelope.Payload.TotalCents <= 0 || envelope.Payload.Currency != "BRL" ||
-            envelope.Payload.Reason is not "expired" and not "canceled")
+            envelope.Payload.Reason is not "expired" and not "canceled" and not "failed")
             throw new DomainException("Contrato de recusa de pagamento inválido.");
         if (await dbContext.InboxMessages.AnyAsync(item => item.EventId == envelope.EventId,
             cancellationToken)) return false;

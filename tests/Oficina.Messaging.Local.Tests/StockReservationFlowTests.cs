@@ -37,6 +37,7 @@ public sealed class StockReservationFlowTests
     [Theory]
     [InlineData(2, 3, WorkOrderProcessState.AwaitingPayment, false, "expired")]
     [InlineData(2, 3, WorkOrderProcessState.AwaitingPayment, false, "canceled")]
+    [InlineData(2, 3, WorkOrderProcessState.AwaitingPayment, false, "failed")]
     [InlineData(4, 1, WorkOrderProcessState.Canceled, false, "expired")]
     [InlineData(2, 3, WorkOrderProcessState.AwaitingPayment, true, "expired")]
     public async Task ReservationResultUpdatesOrderWithoutOverselling(

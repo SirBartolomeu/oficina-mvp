@@ -17,7 +17,7 @@ public sealed class ReleaseStockRequestedHandler(ExecutionDbContext db, Executio
             envelope.EventId == Guid.Empty || envelope.CorrelationId == Guid.Empty ||
             envelope.CausationId == Guid.Empty || envelope.WorkOrderId == Guid.Empty ||
             envelope.Payload is null || envelope.Payload.ReservationId == Guid.Empty ||
-            envelope.Payload.Reason is not "expired" and not "canceled")
+            envelope.Payload.Reason is not "expired" and not "canceled" and not "failed")
             throw new DomainException("Contrato de liberação inválido.");
         if (await db.InboxMessages.AnyAsync(item => item.EventId == envelope.EventId,
             cancellationToken)) return false;

@@ -10,8 +10,11 @@ namespace OficinaMvp.Integration.Tests;
 
 public sealed class PaymentCompensationTests
 {
-    [Fact]
-    public async Task RejectionRequestsReleaseAndCancelsOnlyAfterConfirmation()
+    [Theory]
+    [InlineData("expired")]
+    [InlineData("canceled")]
+    [InlineData("failed")]
+    public async Task RejectionRequestsReleaseAndCancelsOnlyAfterConfirmation(string reason)
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
@@ -34,7 +37,7 @@ public sealed class PaymentCompensationTests
         var rejected = new IntegrationEnvelope<PaymentRejectedPayload>(Guid.NewGuid(),
             "PaymentRejected", 1, order.Id, Guid.NewGuid(), order.Id, order.BranchId,
             DateTime.UtcNow, new PaymentRejectedPayload(paymentId, "ORDTEST123", 12500,
-                "BRL", "expired"));
+                "BRL", reason));
         var rejectedBody = JsonSerializer.Serialize(rejected,
             new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var rejectionHandler = new PaymentRejectedHandler(db);
